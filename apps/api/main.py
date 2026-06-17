@@ -1,6 +1,6 @@
 from fastapi import FastAPI, status, HTTPException
 from schema import GraphResponse, ChatRequest, ChatResponse
-from seed_data import seed_data
+from repository import get_notebook
 from fastapi.middleware.cors import CORSMiddleware
 
 from tutor import get_ai_reply
@@ -29,8 +29,10 @@ def health_check():
     response_model_by_alias=True
 )
 def get_seed_notebook():
-    return seed_data
-
+    try:
+        return get_notebook("seed")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 @app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponse)
 def post_chat(request: ChatRequest):
     try:
