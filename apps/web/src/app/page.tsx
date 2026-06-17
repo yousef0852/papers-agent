@@ -14,6 +14,8 @@ export default function Home() {
   const [state, setState] = useState<AppState>({ nodes: [], edges: [], messages: [], focusId: null, newIds: [] })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatFullscreen, setChatFullscreen] = useState(false)
 
   useEffect(() => {
     async function loadFromApi() {
@@ -66,6 +68,18 @@ export default function Home() {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
+  // Close chat overlay on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (chatFullscreen) setChatFullscreen(false)
+        else if (chatOpen) setChatOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [chatOpen, chatFullscreen])
+
   const focused = state.focusId ? state.nodes.find((n) => n.id === state.focusId) ?? null : null
   const selectedNode = selectedId ? state.nodes.find((n) => n.id === selectedId) ?? null : null
   const inspectorNode = selectedNode || focused
@@ -117,6 +131,20 @@ export default function Home() {
     setState(next)
   }
 
+  function handleOpenChat() {
+    setChatOpen(true)
+  }
+
+  function handleCloseChat() {
+    setChatOpen(false)
+    setChatFullscreen(false)
+  }
+
+  function handleToggleFullscreen() {
+    setChatFullscreen((f) => !f)
+    if (!chatOpen) setChatOpen(true)
+  }
+
   return (
     <div className="app graph-only">
       <header className="header">
@@ -142,8 +170,7 @@ export default function Home() {
             const cs = getCategoryStyles(theme)[cat]
             return (
               <div key={cat} className="legend-item">
-                <span className="legend-swatch"
-                  style={{ background: cs.fill, color: cs.stroke }} />
+                <span className="legend-swatch" style={{ background: cs.fill, color: cs.stroke }} />
                 <span>{cs.label}</span>
               </div>
             )
@@ -158,6 +185,7 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Hero canvas — full screen */}
       <div className="canvas-wrap">
         <Graph
           state={state}
@@ -174,13 +202,28 @@ export default function Home() {
         <div className="folio">folio I · {new Date().getFullYear()}</div>
       </div>
 
-      <div className="chat-sidebar">
-        <ChatPanel
-          messages={state.messages}
-          pending={state.pending}
-          onSendMessage={handleSendMessage}
-        />
-      </div>
+      {/* Floating action button — summons the tutor */}
+      <button
+        className={`chat-fab${chatOpen ? ' chat-fab--hidden' : ''}`}
+        onClick={handleOpenChat}
+        aria-label="Open AI Tutor"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M14 1H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2v3l3-3h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1Z" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round"/>
+        </svg>
+        <span>Chat with Tutor</span>
+      </button>
+
+      {/* Slide-over chat overlay */}
+      <ChatPanel
+        messages={state.messages}
+        pending={state.pending}
+        onSendMessage={handleSendMessage}
+        open={chatOpen}
+        fullscreen={chatFullscreen}
+        onClose={handleCloseChat}
+        onToggleFullscreen={handleToggleFullscreen}
+      />
     </div>
   )
 }
