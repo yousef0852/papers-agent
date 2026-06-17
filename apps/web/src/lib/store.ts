@@ -84,7 +84,7 @@ function buildTutorSystemPrompt(state: AppState): string {
 
   return `You are a scholarly tutor on the history of artificial intelligence, writing inside a personal knowledge-graph notebook. Respond ONLY with a valid JSON object (no markdown fences, no preamble), no other text. Shape:
 {
-  "reply": "Answer in English, 2-4 short sentences, scholarly but warm tone.",
+  "reply": "Reply in the same language the user wrote in. 2-4 short sentences, scholarly but warm tone.",
   "focus": "id_of_node_the_conversation_is_about_or_null",
   "new_nodes": [ { "id": "snake_case", "kind": "paper|concept", "parent_id": "id_of_paper_if_kind_is_concept_else_null", "label": "Short name", "year": INT, "category": "${validCategories}", "summary": "One sentence in English." } ],
   "new_edges": [ { "from": "id", "to": "id", "type": "${validRelTypes}" } ],
@@ -109,12 +109,14 @@ Rules:
 - Edges should genuinely follow from the discussion — don't invent spurious relationships.`
 }
 
-async function callTutor(state: AppState, userText: string): Promise<TutorResponse> {
+async function callTutor(state: AppState, _userText: string): Promise<TutorResponse> {
+  // state.messages already contains the current user message (pushed by the
+  // optimistic update before sendUserMessage was called). Build history directly
+  // from it — no extra push needed.
   const history = state.messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .slice(-10)
     .map((m) => ({ role: m.role, content: m.content }))
-  history.push({ role: 'user', content: userText })
 
   const sys = buildTutorSystemPrompt(state)
 
@@ -210,8 +212,10 @@ export function applyTutorResult(state: AppState, data: TutorResponse): AppState
 }
 
 export async function sendUserMessage(text: string): Promise<AppState> {
+  // The optimistic update in handleSendMessage (page.tsx) has already pushed the
+  // user message and saved it to localStorage before this function is called.
+  // Loading state here gives us the version that already contains the user message.
   const state = loadState()
-  state.messages.push({ role: 'user', content: text })
   state.pending = true
   saveState(state)
 
