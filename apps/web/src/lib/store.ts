@@ -120,6 +120,7 @@ function buildTutorSystemPrompt(state: AppState): string {
   - Historically accurate years. snake_case IDs only. No duplicates.
   - Edges should genuinely follow from the discussion — don't invent spurious relationships.
   - Output must be valid JSON only. If the reply is long, keep it inside the "reply" field as one JSON string.`
+}
 
 async function callTutor(state: AppState, _userText: string): Promise<TutorResponse> {
   // state.messages already contains the current user message (pushed by the
