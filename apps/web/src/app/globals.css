@@ -25,7 +25,7 @@
   --grid-line: rgba(166, 124, 82, 0.06);
 }
 
-body.dark {
+html.dark {
   --paper: #0F1419;
   --paper-2: #1A2332;
   --paper-3: #1F2B3A;

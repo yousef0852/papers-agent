@@ -14,6 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('ai-mind-theme');if(t!=='light')document.documentElement.classList.add('dark')})()` }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>
