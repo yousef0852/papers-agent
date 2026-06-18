@@ -25,7 +25,7 @@
   --grid-line: rgba(166, 124, 82, 0.06);
 }
 
-body.dark {
+html.dark {
   --paper: #0F1419;
   --paper-2: #1A2332;
   --paper-3: #1F2B3A;
@@ -51,13 +51,13 @@ body.dark {
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html { height: 100%; }
 body {
   margin: 0;
+  min-height: 100%;
   background: var(--paper);
   color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: background-color 200ms ease, color 200ms ease;
@@ -66,6 +66,7 @@ body {
 .app.graph-only {
   position: relative;
   height: 100vh;
+  overflow: hidden;
   background:
     radial-gradient(ellipse 900px 600px at 0% 0%, var(--bg-radial-1), transparent 60%),
     radial-gradient(ellipse 900px 600px at 100% 100%, var(--bg-radial-2), transparent 60%),
