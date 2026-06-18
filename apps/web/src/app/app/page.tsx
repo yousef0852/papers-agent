@@ -32,7 +32,7 @@ async function fetchSeedState(): Promise<AppState> {
 export default function Home() {
   const [state, setState] = useState<AppState>({ nodes: [], edges: [], messages: [], focusId: null, newIds: [] })
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [chatOpen, setChatOpen] = useState(false)
   const [chatFullscreen, setChatFullscreen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -77,7 +77,7 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    document.body.classList.toggle('dark', theme === 'dark')
+    document.documentElement.classList.toggle('dark', theme === 'dark')
     localStorage.setItem(THEME_KEY, theme)
   }, [theme])
 
