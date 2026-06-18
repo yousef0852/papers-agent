@@ -18,7 +18,7 @@ def get_ai_reply(system: str, messages: list) -> str:
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1024,
+            max_tokens=4096,
             system=system,
             messages=messages
         )
