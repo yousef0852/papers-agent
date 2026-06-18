@@ -42,13 +42,10 @@ export function loadState(): AppState {
     if (!raw) return createInitialState()
     const parsed = JSON.parse(raw)
     if (!parsed.nodes || !parsed.messages) return createInitialState()
-    const positioned: any[] = []
-    for (const n of parsed.nodes) {
-      const missing = n.kind !== 'concept' && (n.x == null || n.y == null || !Number.isFinite(n.x))
-      const node = { ...n, annotations: n.annotations || [] }
-      positioned.push(missing ? positionNode(node, positioned) : node)
-    }
-    parsed.nodes = positioned
+    parsed.nodes = parsed.nodes.map((n: any) => ({
+      ...n,
+      annotations: n.annotations || [],
+    }))
     parsed.newIds = []
     return parsed as AppState
   } catch {

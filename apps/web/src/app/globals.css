@@ -218,7 +218,6 @@ svg.board {
   bottom: 0;
   width: 440px;
   z-index: 50;
-  pointer-events: auto;
   transform: translateX(100%);
   transition: transform 360ms cubic-bezier(0.4, 0, 0.2, 1), width 360ms cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--paper);
@@ -414,9 +413,6 @@ body.chat-body::before {
   border-radius: 6px;
   color: var(--ink-faded);
   cursor: pointer;
-  pointer-events: auto;
-  position: relative;
-  z-index: 1;
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
 }
 .chat-head-btn:hover {
@@ -442,7 +438,6 @@ body.chat-body::before {
 .chat-scroll {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
   padding: 20px 24px 8px;
   display: flex;
   flex-direction: column;
@@ -598,10 +593,7 @@ body.chat-body::before {
   font-family: "Inter", sans-serif;
   font-size: 14px; line-height: 1.65;
   color: var(--ink);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  max-width: 100%;
+  white-space: pre-wrap; word-wrap: break-word;
 }
 .msg.user .msg-body {
   background: var(--paper-3);
