@@ -8,11 +8,11 @@ from schema import (
     WaitlistRequest,
     WaitlistResponse,
 )
-from repository import get_notebook, add_waitlist_entry
+from repository import get_notebook, add_waitlist_entry, save_notebook
 from fastapi.middleware.cors import CORSMiddleware
 
 from tutor import get_ai_reply
-
+from database import Session
 
 app = FastAPI()
 
@@ -72,3 +72,19 @@ def post_waitlist(request: WaitlistRequest):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     return WaitlistResponse(ok=True)
+
+
+@app.put(
+    "/notebooks/{notebook_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=GraphResponse,
+    response_model_by_alias=True,
+)
+def put_notebook(notebook_id: str, request: GraphResponse):
+    try:
+        save_notebook(notebook_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    return request
