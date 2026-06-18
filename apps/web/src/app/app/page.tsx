@@ -6,6 +6,7 @@ import { ChatPanel } from '@/components/ChatPanel'
 import { loadState, saveState, resetState, setFocus, sendUserMessage } from '@/lib/store'
 import { getCategoryStyles, REL_LABELS } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
+import { capture } from '@/lib/analytics'
 import type { AppState } from '@/lib/types'
 
 const THEME_KEY = 'ai-mind-theme'
@@ -16,6 +17,10 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [chatOpen, setChatOpen] = useState(false)
   const [chatFullscreen, setChatFullscreen] = useState(false)
+
+  useEffect(() => {
+    capture('notebook_opened')
+  }, [])
 
   useEffect(() => {
     async function loadFromApi() {
@@ -119,12 +124,34 @@ export default function Home() {
     }
   }
 
+  function handleExport() {
+    const s = loadState()
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      nodes: s.nodes,
+      edges: s.edges,
+      messages: s.messages,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `ai-mind-notebook-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    capture('graph_exported', { nodes: s.nodes.length, edges: s.edges.length })
+  }
+
   async function handleSendMessage(text: string) {
     const optimistic = loadState()
     optimistic.messages.push({ role: 'user', content: text })
     optimistic.pending = true
     saveState(optimistic)
     setState(optimistic)
+    const turnCount = optimistic.messages.filter((m) => m.role === 'user').length
+    capture('tutor_message_sent', { turn: turnCount, length: text.length })
 
     const next = await sendUserMessage(text)
     setState(next)
@@ -166,6 +193,7 @@ export default function Home() {
           <button className="header-btn ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
             {theme === 'dark' ? '☽ Dark' : '☼ Light'}
           </button>
+          <button className="header-btn ghost" onClick={handleExport} title="Export notebook as JSON">Export</button>
           <button className="header-btn ghost" onClick={handleReset} title="Reset notebook">Reset</button>
         </div>
       </header>

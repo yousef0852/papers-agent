@@ -1,6 +1,7 @@
 import type { AppState, ChatMessage } from './types'
 import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode } from './data'
 import { API_BASE_URL } from './config'
+import { capture } from './analytics'
 
 interface TutorResponse {
   reply?: string
@@ -225,6 +226,7 @@ export async function sendUserMessage(text: string): Promise<AppState> {
     const next = applyTutorResult(state, data)
     next.pending = false
     saveState(next)
+    if (next.newIds.length) capture('node_added', { count: next.newIds.length })
     return next
   } catch (err) {
     console.error(err)

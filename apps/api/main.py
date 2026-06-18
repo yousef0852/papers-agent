@@ -1,6 +1,14 @@
+import os
+
 from fastapi import FastAPI, status, HTTPException
-from schema import GraphResponse, ChatRequest, ChatResponse
-from repository import get_notebook
+from schema import (
+    GraphResponse,
+    ChatRequest,
+    ChatResponse,
+    WaitlistRequest,
+    WaitlistResponse,
+)
+from repository import get_notebook, add_waitlist_entry
 from fastapi.middleware.cors import CORSMiddleware
 
 from tutor import get_ai_reply
@@ -8,7 +16,12 @@ from tutor import get_ai_reply
 
 app = FastAPI()
 
-ALLOW_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
+DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+ALLOW_ORIGINS = [
+    o.strip()
+    for o in os.getenv("ALLOW_ORIGINS", DEFAULT_ORIGINS).split(",")
+    if o.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,3 +53,22 @@ def post_chat(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     return ChatResponse(content=response)
+
+
+@app.post(
+    "/waitlist",
+    status_code=status.HTTP_201_CREATED,
+    response_model=WaitlistResponse,
+)
+def post_waitlist(request: WaitlistRequest):
+    email = request.email.strip().lower()
+    if "@" not in email or "." not in email.split("@")[-1]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A valid email is required.",
+        )
+    try:
+        add_waitlist_entry(email, request.source, request.note)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    return WaitlistResponse(ok=True)

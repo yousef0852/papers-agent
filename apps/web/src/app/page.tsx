@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { HeroSandboxLoader } from '@/components/landing/HeroSandboxLoader'
+import { FoundingMember } from '@/components/landing/FoundingMember'
 import './landing.css'
 
 export const metadata: Metadata = {
@@ -90,6 +91,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Founding members / pricing ───────────────────────────────────── */}
+      <FoundingMember />
 
       {/* ── Footer CTA ───────────────────────────────────────────────────── */}
       <section className="landing-footer-cta">

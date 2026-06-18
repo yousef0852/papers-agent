@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from database import Session
-from models import Edges, Messages, Nodes, Notebook
+from models import Edges, Messages, Nodes, Notebook, WaitlistEntry
 from schema import Edge, GraphResponse, Message, Node
 
 
@@ -48,3 +48,9 @@ def get_notebook(notebook_id: str) -> GraphResponse:
         ]
 
         return GraphResponse(nodes=nodes, edges=edges, messages=messages)
+
+
+def add_waitlist_entry(email: str, source: str, note: str | None = None) -> None:
+    with Session() as session:
+        session.add(WaitlistEntry(email=email, source=source, note=note))
+        session.commit()
