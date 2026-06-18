@@ -50,6 +50,68 @@ def get_notebook(notebook_id: str) -> GraphResponse:
         return GraphResponse(nodes=nodes, edges=edges, messages=messages)
 
 
+def save_notebook(notebook_id: str, graph: GraphResponse):
+    with Session() as db:
+        try:
+            existing = db.get(Notebook, notebook_id)
+            if not existing:
+                raise ValueError(f"Notebook {notebook_id!r} does not exist")
+
+            db.query(Edges).filter(Edges.notebook_id == notebook_id).delete()
+            db.query(Messages).filter(Messages.notebook_id == notebook_id).delete()
+            db.query(Nodes).filter(Nodes.notebook_id == notebook_id).delete()
+
+            new_nodes = [
+                Nodes(
+                    id=node.id,
+                    notebook_id=notebook_id,
+                    kind=node.kind,
+                    parent_id=node.parent_id,
+                    label=node.label,
+                    year=node.year,
+                    category=node.category,
+                    summary=node.summary,
+                    annotations=node.annotations or [],
+                    x=node.x,
+                    y=node.y,
+                )
+                for node in graph.nodes
+            ]
+
+            new_edges = [
+                Edges(
+                    from_id=edge.from_node,
+                    to_id=edge.to,
+                    notebook_id=notebook_id,
+                    type=edge.type,
+                )
+                for edge in graph.edges
+            ]
+
+            new_messages = [
+                Messages(
+                    notebook_id=notebook_id,
+                    role=message.role,
+                    content=message.content,
+                )
+                for message in graph.messages
+            ]
+
+            if new_nodes:
+                db.add_all(new_nodes)
+            if new_edges:
+                db.add_all(new_edges)
+            if new_messages:
+                db.add_all(new_messages)
+
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            print(f"Failed to save notebook {notebook_id}: {str(e)}")
+            raise e
+
+
 def add_waitlist_entry(email: str, source: str, note: str | None = None) -> None:
     with Session() as session:
         session.add(WaitlistEntry(email=email, source=source, note=note))
