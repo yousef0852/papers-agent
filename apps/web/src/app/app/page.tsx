@@ -11,46 +11,64 @@ import type { AppState } from '@/lib/types'
 
 const THEME_KEY = 'ai-mind-theme'
 
+function mapSeedToState(data: any): AppState {
+  const nodes = (data.nodes ?? []).map((n: any) => ({
+    ...n,
+    parent_id: n.parent_id ?? undefined,
+    rotation: n.rotation ?? 0,
+    annotations: (n.annotations ?? []).map((a: any) =>
+      typeof a === 'string' ? { text: a, ts: Date.now() } : a
+    ),
+  }))
+  return { nodes, edges: data.edges ?? [], messages: [], focusId: null, newIds: [] }
+}
+
+async function fetchSeedState(): Promise<AppState> {
+  const res = await fetch(`${API_BASE_URL}/notebooks/seed`)
+  if (!res.ok) throw new Error(`seed ${res.status}`)
+  return mapSeedToState(await res.json())
+}
+
 export default function Home() {
   const [state, setState] = useState<AppState>({ nodes: [], edges: [], messages: [], focusId: null, newIds: [] })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [chatOpen, setChatOpen] = useState(false)
   const [chatFullscreen, setChatFullscreen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     capture('notebook_opened')
   }, [])
 
   useEffect(() => {
-    async function loadFromApi() {
-      try {
-        const res = await fetch(`${API_BASE_URL}/notebooks/seed`)
-        if (!res.ok) throw new Error(`seed ${res.status}`)
-        const data = await res.json()
-        const nodes = (data.nodes ?? []).map((n: any) => ({
-          ...n,
-          parent_id: n.parent_id ?? undefined,
-          rotation: n.rotation ?? 0,
-          annotations: (n.annotations ?? []).map((a: any) =>
-            typeof a === 'string' ? { text: a, ts: Date.now() } : a
-          ),
-        }))
-        const next: AppState = {
-          nodes,
-          edges: data.edges ?? [],
-          messages: [],
-          focusId: null,
-          newIds: [],
+    let cancelled = false
+    async function init() {
+      // Returning user: keep their accumulated notebook. Never overwrite it with the seed.
+      const existing = loadState()
+      if (existing.nodes.length > 0) {
+        if (!cancelled) {
+          setState(existing)
+          setLoading(false)
         }
+        return
+      }
+      // First visit: load the starter graph from the API.
+      try {
+        const next = await fetchSeedState()
         saveState(next)
-        setState(next)
+        if (!cancelled) setState(next)
       } catch (err) {
-        console.warn('API load failed, using localStorage:', err)
-        setState(loadState())
+        console.warn('API seed load failed, using localStorage:', err)
+        if (!cancelled) setState(loadState())
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
-    loadFromApi()
+    init()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -116,11 +134,20 @@ export default function Home() {
     setFocus(null)
   }
 
-  function handleReset() {
-    if (confirm('Reset the notebook? All discussion and added nodes will be cleared.')) {
-      const s = resetState()
-      setState(s)
-      setSelectedId(null)
+  async function handleReset() {
+    if (!confirm('Reset the notebook? All discussion and added nodes will be cleared.')) return
+    resetState()
+    setSelectedId(null)
+    setLoading(true)
+    try {
+      const next = await fetchSeedState()
+      saveState(next)
+      setState(next)
+    } catch (err) {
+      console.warn('Reset re-seed failed:', err)
+      setState(loadState())
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -211,6 +238,24 @@ export default function Home() {
           related={relatedForInspector}
           onClose={handleClearSelection}
         />
+        {loading && state.nodes.length === 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'Fraunces', Georgia, serif",
+              fontStyle: 'italic',
+              fontSize: 16,
+              color: 'var(--ink-muted, #6b5d4f)',
+              pointerEvents: 'none',
+            }}
+          >
+            Opening your notebook…
+          </div>
+        )}
         <div className="folio">folio I · {new Date().getFullYear()}</div>
       </div>
 
