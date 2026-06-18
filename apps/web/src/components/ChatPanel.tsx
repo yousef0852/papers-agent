@@ -78,15 +78,19 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
             <div className="chat-hero">
               <div className="hero-body">
                 <div className="hero-ornament">❧</div>
-                <h1 className="hero-title">{suggestion.title}</h1>
-                <p className="hero-sub">{suggestion.sub}</p>
-                <div className="hero-prompts">
-                  {suggestion.prompts.map((p) => (
-                    <button key={p} className="prompt-chip" onClick={() => firePrompt(p)} disabled={pending}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
+                {suggestion && (
+                  <>
+                    <h1 className="hero-title">{suggestion.title}</h1>
+                    <p className="hero-sub">{suggestion.sub}</p>
+                    <div className="hero-prompts">
+                      {suggestion.prompts.map((p) => (
+                        <button key={p} className="prompt-chip" onClick={() => firePrompt(p)} disabled={pending}>
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="composer composer--hero">

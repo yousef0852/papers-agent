@@ -165,7 +165,11 @@ body {
 .canvas-wrap::-webkit-scrollbar { height: 8px; }
 .canvas-wrap::-webkit-scrollbar-track { background: transparent; }
 .canvas-wrap::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
-svg.board { display: block; margin: 0 auto; }
+svg.board {
+  display: block;
+  margin: 0 auto;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 /* ── Floating action button ── */
 .chat-fab {
