@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export interface SuggestionSet {
   theme: string
@@ -77,25 +77,27 @@ function pickRandom(): SuggestionSet {
 /**
  * Returns a cohesive suggestion set for the empty chat state.
  *
- * Currently selects randomly from a curated pool on mount (zero network cost).
- * To swap in a live API response, replace the useState initialiser with:
+ * Starts as null on both server and client (hydration-safe), then picks a
+ * random theme in useEffect so Math.random() only ever runs on the client.
  *
- *   const [suggestion, setSuggestion] = useState<SuggestionSet | null>(null)
- *   const [isLoading, setIsLoading] = useState(true)
- *   useEffect(() => {
- *     fetch(`/api/notebooks/suggestions?nodes=${graphSize ?? 0}`)
- *       .then(r => r.json())
- *       .then(d => { setSuggestion(d); setIsLoading(false) })
- *       .catch(() => { setSuggestion(pickRandom()); setIsLoading(false) })
- *   }, [graphSize])
+ * To swap in a live API response, replace the useEffect body with:
  *
- * The component contract (SuggestionSet shape) stays identical either way.
+ *   fetch(`/api/notebooks/suggestions?nodes=${graphSize ?? 0}`)
+ *     .then(r => r.json())
+ *     .then(d => setSuggestion(d))
+ *     .catch(() => setSuggestion(pickRandom()))
+ *
+ * The component contract (SuggestionSet | null) stays identical either way.
  */
 export function useSuggestions(_graphSize?: number): {
-  suggestion: SuggestionSet
+  suggestion: SuggestionSet | null
   isLoading: boolean
 } {
-  // useState(fn) — initialiser runs exactly once, no null flash, no useEffect needed
-  const [suggestion] = useState<SuggestionSet>(pickRandom)
-  return { suggestion, isLoading: false }
+  const [suggestion, setSuggestion] = useState<SuggestionSet | null>(null)
+
+  useEffect(() => {
+    setSuggestion(pickRandom())
+  }, [])
+
+  return { suggestion, isLoading: suggestion === null }
 }

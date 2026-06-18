@@ -117,10 +117,34 @@ function annotationLayout(node: GraphNode, edges: AppState['edges'], allNodes: G
   })
 }
 
+// Horizontal padding around the node cluster (covers ±150px annotation slots + breathing room)
+const PAD_H = 200
+// Minimum viewport width — prevents over-zoom on a single node
+const MIN_VW = 640
+
+function computeViewBox(nodes: GraphNode[]): { vx: number; vw: number } {
+  const papers = nodes.filter((n) => n.kind !== 'concept')
+  if (papers.length === 0) return { vx: 0, vw: CANVAS_W }
+
+  const xs = papers.map((n) => n.x)
+  const rawLeft  = Math.min(...xs) - NODE_W / 2 - PAD_H
+  const rawRight = Math.max(...xs) + NODE_W / 2 + PAD_H
+
+  const left  = Math.max(0, rawLeft)
+  const right = Math.min(CANVAS_W, rawRight)
+  const w     = Math.max(MIN_VW, right - left)
+
+  // If edge-clamping made the window smaller than w, push the other side out
+  const adjLeft = Math.max(0, Math.min(CANVAS_W - w, left))
+  return { vx: adjLeft, vw: w }
+}
+
 export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme }: GraphProps) {
   const CATEGORY_STYLES = getCategoryStyles(theme)
   const { nodes, edges, focusId, newIds } = state
   const papers = nodes.filter((n) => n.kind !== 'concept')
+
+  const { vx, vw } = useMemo(() => computeViewBox(nodes), [nodes])
 
   const conceptsByParent = useMemo(() => {
     const m: Record<string, GraphNode[]> = {}
@@ -164,9 +188,9 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
   return (
     <svg
       className="board"
-      width={CANVAS_W}
+      width={vw}
       height={CANVAS_H}
-      viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+      viewBox={`${vx} 0 ${vw} ${CANVAS_H}`}
       onClick={onClearSelection}
     >
       <defs>
