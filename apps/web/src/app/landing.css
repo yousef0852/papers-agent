@@ -453,6 +453,150 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   Founding members / pricing
+   ══════════════════════════════════════════════════════════════════════════════ */
+.landing-pricing {
+  padding: 80px 64px;
+  max-width: 1100px;
+  margin: 0 auto;
+  border-top: 1px solid var(--rule-soft);
+  text-align: center;
+}
+
+.landing-pricing .section-label {
+  margin-bottom: 12px;
+}
+
+.landing-pricing .landing-section-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 8px 0 44px;
+  text-align: left;
+}
+
+.pricing-card {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pricing-card--featured {
+  border-color: var(--accent);
+  box-shadow: 0 8px 32px rgba(166, 124, 82, 0.12);
+}
+
+.pricing-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.pricing-price {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 34px;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.pricing-cadence {
+  font-size: 14px;
+  color: var(--ink-faded);
+  margin-left: 4px;
+}
+
+.pricing-blurb {
+  font-size: 13.5px;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.pricing-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pricing-points li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  padding-left: 16px;
+  position: relative;
+}
+
+.pricing-points li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--accent);
+}
+
+.founding-form {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.founding-input {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 16px;
+  width: 280px;
+  max-width: 100%;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.founding-input:focus {
+  border-color: var(--accent);
+}
+
+.founding-done {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 17px;
+  font-style: italic;
+  color: var(--accent);
+  margin: 0;
+}
+
+.founding-error {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: #b4503c;
+  margin: 4px 0 0;
+}
+
+.founding-fineprint {
+  font-size: 12.5px;
+  color: var(--ink-faded);
+  margin: 14px 0 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    Footer CTA
    ══════════════════════════════════════════════════════════════════════════════ */
 .landing-footer-cta {
@@ -494,6 +638,12 @@
     gap: 32px;
   }
   .landing-hiw {
+    padding: 56px 32px;
+  }
+  .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-pricing {
     padding: 56px 32px;
   }
 }

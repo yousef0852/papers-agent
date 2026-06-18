@@ -57,10 +57,16 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Notebook (/app): lock page scroll; canvas pans inside .canvas-wrap */
+body:has(.app.graph-only) {
+  overflow: hidden;
 }
 
 .app.graph-only {

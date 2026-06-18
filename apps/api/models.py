@@ -51,3 +51,15 @@ class Messages(Base):
     role: Mapped[str] = mapped_column(String)
     content: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+
+
+class WaitlistEntry(Base):
+    __tablename__ = "waitlist"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String, index=True)
+    source: Mapped[str] = mapped_column(String, server_default="waitlist")
+    note: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC)
+    )

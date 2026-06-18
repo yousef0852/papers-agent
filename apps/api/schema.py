@@ -45,3 +45,13 @@ class GraphResponse(BaseModel):
     nodes: List[Node] = Field(default_factory=list)
     edges: List[Edge] = Field(default_factory=list)
     messages: List[Message] = Field(default_factory=list)
+
+
+class WaitlistRequest(BaseModel):
+    email: str
+    source: Literal["waitlist", "founding_member"] = "waitlist"
+    note: Optional[str] = None
+
+
+class WaitlistResponse(BaseModel):
+    ok: bool = True
