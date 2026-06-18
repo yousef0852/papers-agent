@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { GraphNode, AppState } from '@/lib/types'
-import { CANVAS_W, CANVAS_H, NODE_W, NODE_H, getCategoryStyles, LANE_FRACS, REL_LABELS, xFromYear, hashId } from '@/lib/data'
+import { CANVAS_W, CANVAS_H, NODE_W, NODE_H, YEAR_MIN, YEAR_MAX, getCategoryStyles, LANE_FRACS, REL_LABELS, xFromYear, hashId } from '@/lib/data'
 
 const CONCEPT_W = 86
 const CONCEPT_H = 28
@@ -123,7 +123,7 @@ const PAD_H = 200
 const MIN_VW = 640
 
 function computeViewBox(nodes: GraphNode[]): { vx: number; vw: number } {
-  const papers = nodes.filter((n) => n.kind !== 'concept')
+  const papers = nodes.filter((n) => n.kind !== 'concept' && n.x != null && n.y != null && Number.isFinite(n.x))
   if (papers.length === 0) return { vx: 0, vw: CANVAS_W }
 
   const xs = papers.map((n) => n.x)
@@ -182,7 +182,11 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
     return { nodes: r, edges: e }
   }, [active, edges, nodes])
 
-  const ticks = [1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]
+  const minPaperYear = papers.length ? Math.min(...papers.map(n => n.year)) : YEAR_MIN
+  const tickStart = Math.floor(Math.min(minPaperYear, YEAR_MIN) / 10) * 10
+  const ticks: number[] = []
+  for (let y = tickStart; y < YEAR_MAX; y += 10) ticks.push(y)
+  ticks.push(YEAR_MAX)
   const lanes = ['vision', 'rl', 'foundations', 'architecture', 'language'] as const
 
   return (
@@ -224,7 +228,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           <g key={year}>
             <line className="axis-line" x1={x} x2={x} y1={40} y2={CANVAS_H - 36}
               strokeDasharray={major ? '3 6' : '1 6'} opacity={major ? 0.7 : 0.4} />
-            <text className="tick-label" x={x} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major ? 600 : 400}>
+            <text className="tick-label" x={x} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === YEAR_MAX ? 600 : 400}>
               {year}
             </text>
           </g>
@@ -238,7 +242,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
       <g>
         {edges.map((edge, i) => {
           const a = nodeById[edge.from]; const b = nodeById[edge.to]
-          if (!a || !b) return null
+          if (!a || !b || a.kind === 'concept' || b.kind === 'concept') return null
           const rel = REL_LABELS[edge.type] || REL_LABELS.extends
           const dim = related && !related.edges.has(i)
           const highlight = related && related.edges.has(i)
