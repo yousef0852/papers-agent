@@ -105,6 +105,26 @@ Pair this with the **Sean Ellis PMF survey** (“How would you feel if you could
 
 ---
 
+## 6. Keeping the API warm (Render free tier)
+
+Render's free instance **spins down after ~15 min of inactivity**. The next visitor then waits 30–60s for a cold start — and the first *chat* can hang on the "thinking" dots for that whole time. Bad first impression for the exact strangers you want to win. Pick one fix:
+
+**Option A — External cron (recommended; free, precise, no Actions minutes):**
+1. Create a free job at [cron-job.org](https://cron-job.org) (or UptimeRobot).
+2. URL: `https://papers-agent-1.onrender.com/health`
+3. Interval: every **5–10 minutes**, 24/7.
+4. That's it — the service stays warm.
+
+**Option B — GitHub Actions (committed in `.github/workflows/keep-warm.yml`):**
+- Runs every 10 min once the workflow is on the default branch. Trigger a manual test from the Actions tab ("Keep API warm" → Run workflow).
+- Caveats: scheduled runs can be delayed under load (occasional cold start), schedules auto-disable after 60 days of repo inactivity, and on a **private** repo the pings consume Actions minutes. For a public repo during an active sprint it's fine; otherwise prefer Option A.
+
+**Option C — Upgrade Render** to a paid instance that never sleeps (~$7/mo). Cleanest, costs money. Reasonable once you have real traffic.
+
+> Whichever you choose, confirm it works: leave the app untouched for ~20 min, then load `/app` — it should appear quickly, not after a 30–60s stall.
+
+---
+
 ## Notes
 
 - Analytics no-ops cleanly when `NEXT_PUBLIC_POSTHOG_KEY` is unset — safe to ship without it, but you lose the validation signal.

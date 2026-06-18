@@ -1,0 +1,35 @@
+name: Keep API warm
+
+# Render's free tier spins the API down after ~15 min of inactivity, which means
+# the next visitor eats a 30-60s cold start. This pings /health on a schedule to
+# keep it awake. Reliable enough for a validation sprint.
+#
+# NOTE: GitHub's scheduled runs can be delayed under load, and schedules are
+# auto-disabled after 60 days of repo inactivity. For a precise, always-on pinger,
+# prefer an external cron (see docs/DEPLOY.md "Keeping the API warm").
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # every 10 minutes
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        env:
+          # Change this if the API host changes, or set a repo variable and use ${{ vars.API_URL }}.
+          API_URL: https://papers-agent-1.onrender.com
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -m 90 "$API_URL/health" || echo "000")
+            echo "attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "API is warm."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::warning::API did not return 200 after retries (possible cold start or outage)."
+          exit 1
