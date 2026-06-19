@@ -117,12 +117,18 @@ export default function Home() {
         setShowResetConfirm(false)
         return
       }
+      if (selectedId || state.focusId) {
+        setSelectedId(null)
+        setFocus(null)
+        setState((prev) => ({ ...prev, focusId: null }))
+        return
+      }
       if (chatFullscreen) setChatFullscreen(false)
       else if (chatOpen) setChatOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [showResetConfirm, chatOpen, chatFullscreen])
+  }, [showResetConfirm, chatOpen, chatFullscreen, selectedId, state.focusId])
 
   const focused = state.focusId ? state.nodes.find((n) => n.id === state.focusId) ?? null : null
   const selectedNode = selectedId ? state.nodes.find((n) => n.id === selectedId) ?? null : null
@@ -149,11 +155,13 @@ export default function Home() {
   function handleSelect(id: string) {
     setSelectedId(id)
     setFocus(id)
+    setState((prev) => ({ ...prev, focusId: id }))
   }
 
   function handleClearSelection() {
     setSelectedId(null)
     setFocus(null)
+    setState((prev) => ({ ...prev, focusId: null }))
   }
 
   async function handleReset() {

@@ -382,12 +382,16 @@ export function Inspector({ node, related, onClose }: InspectorProps) {
 
   return (
     <div className="inspector">
-      <button className="insp-close" onClick={onClose} aria-label="close">×</button>
       <div className="insp-row">
         <span className="insp-year">{node.year}</span>
-        <span className="insp-badge" style={{ color: style.stroke, background: style.fill + 'aa' }}>
-          {style.label}
-        </span>
+        <div className="insp-row-actions">
+          <span className="insp-badge" style={{ color: style.stroke, background: style.fill + 'aa' }}>
+            {style.label}
+          </span>
+          <button type="button" className="insp-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
       </div>
       <div className="insp-title">{node.label}</div>
       <div className="insp-summary">{node.summary}</div>
