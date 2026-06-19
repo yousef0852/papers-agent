@@ -20,8 +20,18 @@ function mapSeedToState(data: any): AppState {
       typeof a === 'string' ? { text: a, ts: Date.now() } : a
     ),
   }))
-  return { nodes, edges: data.edges ?? [], messages: [], focusId: null, newIds: [] }
-}
+  return {
+    nodes,
+    edges: data.edges ?? [],
+    messages: (data.messages ?? []).map((m: any) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    focusId: null,
+    newIds: [],
+  };
+
+  }
 
 async function fetchSeedState(): Promise<AppState> {
   const res = await fetch(`${API_BASE_URL}/notebooks/seed`)
