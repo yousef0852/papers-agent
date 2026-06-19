@@ -8,11 +8,10 @@ from schema import (
     WaitlistRequest,
     WaitlistResponse,
 )
-from repository import get_notebook, add_waitlist_entry, save_notebook
+from repository import get_notebook, add_waitlist_entry, reset_notebook_to_seed, save_notebook
 from fastapi.middleware.cors import CORSMiddleware
 
 from tutor import get_ai_reply
-from database import Session
 
 app = FastAPI()
 
@@ -88,3 +87,18 @@ def put_notebook(notebook_id: str, request: GraphResponse):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     return request
+
+
+@app.post(
+    "/notebooks/{notebook_id}/reset",
+    status_code=status.HTTP_200_OK,
+    response_model=GraphResponse,
+    response_model_by_alias=True,
+)
+def post_reset_notebook(notebook_id: str):
+    try:
+        return reset_notebook_to_seed(notebook_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

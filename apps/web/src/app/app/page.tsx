@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
-import { loadState, saveState, resetState, setFocus, sendUserMessage } from '@/lib/store'
+import { loadState, saveState, resetState, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
 import { getCategoryStyles, REL_LABELS } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
@@ -46,6 +46,7 @@ export default function Home() {
   const [chatOpen, setChatOpen] = useState(false)
   const [chatFullscreen, setChatFullscreen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   useEffect(() => {
     capture('notebook_opened')
@@ -103,14 +104,17 @@ export default function Home() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (chatFullscreen) setChatFullscreen(false)
-        else if (chatOpen) setChatOpen(false)
+      if (e.key !== 'Escape') return
+      if (showResetConfirm) {
+        setShowResetConfirm(false)
+        return
       }
+      if (chatFullscreen) setChatFullscreen(false)
+      else if (chatOpen) setChatOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [chatOpen, chatFullscreen])
+  }, [showResetConfirm, chatOpen, chatFullscreen])
 
   const focused = state.focusId ? state.nodes.find((n) => n.id === state.focusId) ?? null : null
   const selectedNode = selectedId ? state.nodes.find((n) => n.id === selectedId) ?? null : null
@@ -145,14 +149,15 @@ export default function Home() {
   }
 
   async function handleReset() {
-    if (!confirm('Reset the notebook? All discussion and added nodes will be cleared.')) return
     resetState()
     setSelectedId(null)
     setLoading(true)
     try {
-      const next = await fetchSeedState()
+      const data = await resetNotebookOnApi()
+      const next = mapSeedToState(data)
       saveState(next)
       setState(next)
+      capture('notebook_reset')
     } catch (err) {
       console.warn('Reset re-seed failed:', err)
       setState(loadState())
@@ -231,7 +236,7 @@ export default function Home() {
             {theme === 'dark' ? '☽ Dark' : '☼ Light'}
           </button>
           <button className="header-btn ghost" onClick={handleExport} title="Export notebook as JSON">Export</button>
-          <button className="header-btn ghost" onClick={handleReset} title="Reset notebook">Reset</button>
+          <button className="header-btn ghost" onClick={() => setShowResetConfirm(true)} title="Reset notebook">Reset</button>
         </div>
       </header>
 
@@ -289,6 +294,49 @@ export default function Home() {
         onClose={() => { setChatOpen(false); setChatFullscreen(false) }}
         onToggleFullscreen={() => { setChatFullscreen(f => !f); if (!chatOpen) setChatOpen(true) }}
       />
+
+      {showResetConfirm && (
+        <div
+          className="reset-modal-backdrop"
+          onClick={() => setShowResetConfirm(false)}
+          role="presentation"
+        >
+          <div
+            className="reset-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="reset-modal-title" id="reset-modal-title">Reset notebook?</div>
+            <div className="reset-modal-body">
+              All discussion and added nodes will be cleared on this device and the server.
+              This cannot be undone.
+            </div>
+            <div className="reset-modal-actions">
+              <button
+                type="button"
+                className="reset-modal-btn cancel"
+                onClick={() => setShowResetConfirm(false)}
+                autoFocus
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="reset-modal-btn confirm"
+                onClick={() => {
+                  setShowResetConfirm(false)
+                  void handleReset()
+                }}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

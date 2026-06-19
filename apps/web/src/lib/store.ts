@@ -269,6 +269,14 @@ export async function persistNotebookToApi(state: AppState) {
   if (!res.ok) throw new Error(`API error: ${res.status}`)
 }
 
+export async function resetNotebookOnApi(): Promise<unknown> {
+  const res = await fetch(`${API_BASE_URL}/notebooks/${NOTEBOOK_ID}/reset`, {
+    method: 'POST',
+  })
+  if (!res.ok) throw new Error(`reset ${res.status}`)
+  return res.json()
+}
+
 export async function sendUserMessage(text: string): Promise<AppState> {
   // The optimistic update in handleSendMessage (page.tsx) has already pushed the
   // user message and saved it to localStorage before this function is called.
