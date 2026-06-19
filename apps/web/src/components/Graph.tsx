@@ -1,10 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { GraphNode, AppState } from '@/lib/types'
-import { CANVAS_W, CANVAS_H, NODE_W, NODE_H, YEAR_MIN, YEAR_MAX, getCategoryStyles, LANE_FRACS, REL_LABELS, xFromYear, hashId } from '@/lib/data'
+import {
+  CANVAS_W, CANVAS_H, NODE_W, NODE_H, YEAR_MIN, YEAR_MAX,
+  getCategoryStyles, LANE_FRACS, REL_LABELS, xFromYear, hashId,
+  measurePaperNode, measureConceptNode, CONCEPT_W, CONCEPT_H,
+} from '@/lib/data'
 
-const CONCEPT_W = 86
-const CONCEPT_H = 28
 const CONCEPT_RADIUS = 105
+const VIEW_PAD = 96
+const MIN_VW = 560
+const MIN_VH = 420
 
 interface GraphProps {
   state: AppState
@@ -62,17 +67,22 @@ function conceptPositions(parent: GraphNode, children: GraphNode[]): ConceptPosi
   })
 }
 
-function edgePath(a: GraphNode, b: GraphNode): string {
+function edgePath(
+  a: GraphNode, b: GraphNode,
+  aw: number, ah: number, bw: number, bh: number,
+): string {
   const ax = a.x, ay = a.y, bx = b.x, by = b.y
   const dx = bx - ax, dy = by - ay
   const len = Math.max(1, Math.sqrt(dx * dx + dy * dy))
   const ux = dx / len, uy = dy / len
-  const ahx = NODE_W / 2 - 4
-  const ahy = NODE_H / 2 - 4
+  const ahx = aw / 2 - 4
+  const ahy = ah / 2 - 4
+  const bhx = bw / 2 - 4
+  const bhy = bh / 2 - 4
   const startX = ax + ux * (Math.abs(ux) > Math.abs(uy) ? ahx : ahx * 0.6)
   const startY = ay + uy * (Math.abs(uy) > Math.abs(ux) ? ahy : ahy * 0.6)
-  const endX = bx - ux * (Math.abs(ux) > Math.abs(uy) ? ahx : ahx * 0.6)
-  const endY = by - uy * (Math.abs(uy) > Math.abs(ux) ? ahy : ahy * 0.6)
+  const endX = bx - ux * (Math.abs(ux) > Math.abs(uy) ? bhx : bhx * 0.6)
+  const endY = by - uy * (Math.abs(uy) > Math.abs(ux) ? bhy : bhy * 0.6)
   const mx = (startX + endX) / 2
   const my = (startY + endY) / 2
   const px = -uy, py = ux
@@ -118,33 +128,129 @@ function annotationLayout(node: GraphNode, edges: AppState['edges'], allNodes: G
 }
 
 // Horizontal padding around the node cluster (covers ±150px annotation slots + breathing room)
-const PAD_H = 200
-// Minimum viewport width — prevents over-zoom on a single node
-const MIN_VW = 640
 
-function computeViewBox(nodes: GraphNode[]): { vx: number; vw: number } {
-  const papers = nodes.filter((n) => n.kind !== 'concept' && n.x != null && n.y != null && Number.isFinite(n.x))
-  if (papers.length === 0) return { vx: 0, vw: CANVAS_W }
+interface ViewBox {
+  vx: number
+  vy: number
+  vw: number
+  vh: number
+}
 
-  const xs = papers.map((n) => n.x)
-  const rawLeft  = Math.min(...xs) - NODE_W / 2 - PAD_H
-  const rawRight = Math.max(...xs) + NODE_W / 2 + PAD_H
+function clampViewBox(box: ViewBox): ViewBox {
+  const vw = Math.min(CANVAS_W, Math.max(MIN_VW, box.vw))
+  const vh = Math.min(CANVAS_H, Math.max(MIN_VH, box.vh))
+  return {
+    vw,
+    vh,
+    vx: Math.max(0, Math.min(CANVAS_W - vw, box.vx)),
+    vy: Math.max(0, Math.min(CANVAS_H - vh, box.vy)),
+  }
+}
 
-  const left  = Math.max(0, rawLeft)
-  const right = Math.min(CANVAS_W, rawRight)
-  const w     = Math.max(MIN_VW, right - left)
+function applyZoom(box: ViewBox, zoom: number): ViewBox {
+  if (zoom === 1) return box
+  const cx = box.vx + box.vw / 2
+  const cy = box.vy + box.vh / 2
+  const vw = box.vw / zoom
+  const vh = box.vh / zoom
+  return clampViewBox({ vx: cx - vw / 2, vy: cy - vh / 2, vw, vh })
+}
 
-  // If edge-clamping made the window smaller than w, push the other side out
-  const adjLeft = Math.max(0, Math.min(CANVAS_W - w, left))
-  return { vx: adjLeft, vw: w }
+function computeViewBox(
+  nodes: GraphNode[],
+  focusTarget: string | null,
+  zoom: number,
+): ViewBox {
+  const papers = nodes.filter((n) => n.kind !== 'concept' && n.x != null && Number.isFinite(n.x))
+  if (papers.length === 0) {
+    return applyZoom({ vx: 0, vy: 0, vw: CANVAS_W, vh: CANVAS_H }, zoom)
+  }
+
+  if (focusTarget) {
+    const node = papers.find((n) => n.id === focusTarget)
+    if (node) {
+      const { w, h } = measurePaperNode(node.label)
+      const vw = Math.max(440, w + VIEW_PAD * 2.2)
+      const vh = Math.max(340, h + VIEW_PAD * 2)
+      return applyZoom(clampViewBox({
+        vx: node.x - vw / 2,
+        vy: node.y - vh / 2,
+        vw,
+        vh,
+      }), zoom)
+    }
+  }
+
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const n of papers) {
+    const { w, h } = measurePaperNode(n.label)
+    minX = Math.min(minX, n.x - w / 2)
+    maxX = Math.max(maxX, n.x + w / 2)
+    minY = Math.min(minY, n.y - h / 2)
+    maxY = Math.max(maxY, n.y + h / 2)
+  }
+
+  const spreadX = maxX - minX
+  const spreadY = maxY - minY
+  const crowded = papers.length >= 3 && (spreadX < 520 || spreadY < 180)
+  const boostX = crowded ? 1.45 + papers.length * 0.04 : 1.12
+  const boostY = crowded ? 1.55 + papers.length * 0.03 : 1.1
+
+  const vw = Math.max(MIN_VW, spreadX * boostX + VIEW_PAD * 2)
+  const vh = Math.max(MIN_VH, spreadY * boostY + VIEW_PAD * 2, CANVAS_H * 0.52)
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+
+  return applyZoom(clampViewBox({
+    vx: cx - vw / 2,
+    vy: cy - vh / 2,
+    vw,
+    vh,
+  }), zoom)
 }
 
 export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme }: GraphProps) {
   const CATEGORY_STYLES = getCategoryStyles(theme)
   const { nodes, edges, focusId, newIds } = state
   const papers = nodes.filter((n) => n.kind !== 'concept')
+  const viewportRef = useRef<HTMLDivElement>(null)
 
-  const { vx, vw } = useMemo(() => computeViewBox(nodes), [nodes])
+  const [userZoom, setUserZoom] = useState(1)
+  const [focusZoomId, setFocusZoomId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setFocusZoomId(selectedId)
+  }, [selectedId])
+
+  const focusTarget = focusZoomId || selectedId || null
+  const viewBox = useMemo(
+    () => computeViewBox(nodes, focusTarget, userZoom),
+    [nodes, focusTarget, userZoom],
+  )
+
+  const adjustZoom = useCallback((factor: number) => {
+    setUserZoom((z) => Math.max(0.35, Math.min(2.5, z * factor)))
+  }, [])
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    adjustZoom(e.deltaY > 0 ? 1.08 : 0.92)
+  }, [adjustZoom])
+
+  const fitAll = useCallback(() => {
+    setUserZoom(1)
+    setFocusZoomId(null)
+  }, [])
+
+  const zoomToSelected = useCallback(() => {
+    if (selectedId) {
+      setFocusZoomId(selectedId)
+      setUserZoom(1.35)
+    }
+  }, [selectedId])
 
   const conceptsByParent = useMemo(() => {
     const m: Record<string, GraphNode[]> = {}
@@ -190,13 +296,29 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
   const lanes = ['vision', 'rl', 'foundations', 'architecture', 'language'] as const
 
   return (
-    <svg
-      className="board"
-      width={vw}
-      height={CANVAS_H}
-      viewBox={`${vx} 0 ${vw} ${CANVAS_H}`}
-      onClick={onClearSelection}
+    <div
+      className="graph-viewport"
+      ref={viewportRef}
+      onWheel={handleWheel}
     >
+      <div className="graph-zoom-controls" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="graph-zoom-btn" onClick={() => adjustZoom(1.15)} title="Zoom in" aria-label="Zoom in">+</button>
+        <button type="button" className="graph-zoom-btn" onClick={() => adjustZoom(0.87)} title="Zoom out" aria-label="Zoom out">−</button>
+        <button type="button" className="graph-zoom-btn graph-zoom-btn--text" onClick={zoomToSelected} disabled={!selectedId} title="Zoom to selected node">
+          Focus
+        </button>
+        <button type="button" className="graph-zoom-btn graph-zoom-btn--text" onClick={fitAll} title="Fit all nodes">
+          Fit
+        </button>
+      </div>
+      <svg
+        className="board"
+        width="100%"
+        height={CANVAS_H}
+        viewBox={`${viewBox.vx} ${viewBox.vy} ${viewBox.vw} ${viewBox.vh}`}
+        preserveAspectRatio="xMidYMid meet"
+        onClick={onClearSelection}
+      >
       <defs>
         <marker id="arrow-soft" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
           <path d="M1 1 L11 6 L1 11" fill="none" stroke="var(--svg-arrow)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
@@ -247,7 +369,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           const dim = related && !related.edges.has(i)
           const highlight = related && related.edges.has(i)
           const opacity = dim ? 0.1 : highlight ? 0.85 : 0.5
-          const path = edgePath(a, b)
+          const path = edgePath(a, b, measurePaperNode(a.label).w, measurePaperNode(a.label).h, measurePaperNode(b.label).w, measurePaperNode(b.label).h)
           const midX = (a.x + b.x) / 2
           const midY = (a.y + b.y) / 2 - 6
           const showLabel = highlight || hoveredEdge === i
@@ -276,6 +398,8 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           const showAnnots = focused || selected
           const annots = showAnnots ? annotationLayout(node, edges, nodes) : []
           const scale = selected ? 1.06 : focused ? 1.03 : 1
+          const { w, h, lines } = measurePaperNode(node.label)
+          const labelStartY = lines.length > 1 ? -(lines.length - 1) * 7 + 2 : 6
 
           return (
             <g key={node.id}
@@ -285,28 +409,38 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
               onClick={(e) => { e.stopPropagation(); onSelectNode(node.id) }}
             >
               {focused && (
-                <rect x={-NODE_W / 2 - 6} y={-NODE_H / 2 - 6} width={NODE_W + 12} height={NODE_H + 12}
+                <rect x={-w / 2 - 6} y={-h / 2 - 6} width={w + 12} height={h + 12}
                   rx={5} ry={5} fill="none" stroke={style.stroke} strokeWidth="0.6"
                   strokeDasharray="2 3" opacity="0.6"/>
               )}
-              <rect className="node-rect" x={-NODE_W / 2} y={-NODE_H / 2} width={NODE_W} height={NODE_H}
+              <rect className="node-rect" x={-w / 2} y={-h / 2} width={w} height={h}
                 rx={3} ry={3} fill={style.fill} stroke={style.stroke}
                 strokeWidth={selected ? 2.2 : focused ? 1.8 : 1.5}
                 filter={(selected || focused) ? 'url(#node-shadow-strong)' : 'url(#node-shadow)'}/>
-              <line x1={-NODE_W / 2 + 6} y1={-NODE_H / 2 + 4} x2={-NODE_W / 2 + 10} y2={-NODE_H / 2 + 4}
+              <line x1={-w / 2 + 6} y1={-h / 2 + 4} x2={-w / 2 + 10} y2={-h / 2 + 4}
                 stroke={style.stroke} strokeWidth="0.8" opacity="0.7" />
-              <text x={-NODE_W / 2 + 8} y={-NODE_H / 2 + 14}
+              <text x={-w / 2 + 8} y={-h / 2 + 14}
                 fontFamily="Fraunces, serif" fontStyle="italic" fontSize="10"
                 fill={style.text} opacity="0.7">{node.year}</text>
-              <text x={0} y={6}
-                fontFamily="Fraunces, serif" fontWeight="600" fontSize="14"
-                fill={style.text} textAnchor="middle">{node.label}</text>
+              <text
+                x={0}
+                y={labelStartY}
+                fontFamily="Fraunces, serif"
+                fontWeight="600"
+                fontSize={lines.some((l) => l.length > 18) ? 11.5 : 13}
+                fill={style.text}
+                textAnchor="middle"
+              >
+                {lines.map((line, i) => (
+                  <tspan key={i} x={0} dy={i === 0 ? 0 : 14}>{line}</tspan>
+                ))}
+              </text>
 
               {annots.map((a, i) => (
                 <g key={i} className="annot-g">
                   <line
-                    x1={a.x < 0 ? -NODE_W / 2 + 2 : NODE_W / 2 - 2}
-                    y1={Math.max(-NODE_H / 2 + 8, Math.min(NODE_H / 2 - 8, a.y * 0.3))}
+                    x1={a.x < 0 ? -w / 2 + 2 : w / 2 - 2}
+                    y1={Math.max(-h / 2 + 8, Math.min(h / 2 - 8, a.y * 0.3))}
                     x2={a.x + (a.anchor === 'end' ? 6 : -6)}
                     y2={a.y - 2}
                     stroke={style.stroke}
@@ -325,7 +459,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
                     opacity="0.85"
                     className="annot-text"
                   >
-                    {a.text}
+                    {a.text.length > 28 ? `${a.text.slice(0, 27)}…` : a.text}
                   </text>
                 </g>
               ))}
@@ -340,7 +474,9 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           const placed = conceptPositions(parent, conceptsByParent[active])
           return (
             <g className="concept-group">
-              {placed.map((c) => (
+              {placed.map((c) => {
+                const cm = measureConceptNode(c.label)
+                return (
                 <g key={c.id} className="concept-node"
                    transform={`translate(${c.cx} ${c.cy})`}
                    onClick={(e) => { e.stopPropagation(); onSelectNode(c.id) }}>
@@ -348,9 +484,9 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
                     x2={0} y2={0}
                     stroke={style.stroke} strokeWidth="0.8"
                     strokeDasharray="2 2" opacity="0.55" />
-                  <rect x={-CONCEPT_W / 2} y={-CONCEPT_H / 2}
-                    width={CONCEPT_W} height={CONCEPT_H}
-                    rx={CONCEPT_H / 2} ry={CONCEPT_H / 2}
+                  <rect x={-cm.w / 2} y={-cm.h / 2}
+                    width={cm.w} height={cm.h}
+                    rx={cm.h / 2} ry={cm.h / 2}
                     fill="var(--svg-concept-fill)"
                     stroke={style.stroke}
                     strokeWidth="1"
@@ -359,18 +495,19 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
                     fontFamily="Fraunces, serif"
                     fontStyle="italic"
                     fontWeight="500"
-                    fontSize="11"
+                    fontSize="10.5"
                     fill={style.text}
                     textAnchor="middle">
-                    {c.label}
+                    {cm.text}
                   </text>
                 </g>
-              ))}
+              )})}
             </g>
           )
         })()}
       </g>
     </svg>
+    </div>
   )
 }
 

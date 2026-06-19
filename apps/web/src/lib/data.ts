@@ -78,12 +78,89 @@ export function rotationFor(seed: number): number {
   return jitter(seed + 7, 1.4)
 }
 
+export function wrapNodeLabel(label: string, maxChars = 16, maxLines = 2): string[] {
+  const words = label.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ['']
+  const lines: string[] = []
+  let current = ''
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word
+    if (next.length <= maxChars) {
+      current = next
+      continue
+    }
+    if (current) lines.push(current)
+    if (lines.length >= maxLines - 1) {
+      const rest = [word, ...words.slice(words.indexOf(word) + 1)].join(' ')
+      lines.push(rest.length > maxChars ? `${rest.slice(0, maxChars - 1)}…` : rest)
+      return lines.slice(0, maxLines)
+    }
+    current = word.length > maxChars ? `${word.slice(0, maxChars - 1)}…` : word
+  }
+  if (current) lines.push(current)
+  return lines.slice(0, maxLines)
+}
+
+export function measurePaperNode(label: string): { w: number; h: number; lines: string[] } {
+  const lines = wrapNodeLabel(label)
+  const longest = Math.max(...lines.map((l) => l.length), 1)
+  const w = Math.max(NODE_W, Math.min(240, longest * 7.5 + 28))
+  const h = NODE_H + Math.max(0, lines.length - 1) * 15
+  return { w, h, lines }
+}
+
+export const CONCEPT_W = 86
+export const CONCEPT_H = 28
+
+export function measureConceptNode(label: string): { w: number; h: number; text: string } {
+  const maxChars = 14
+  const text = label.length > maxChars ? `${label.slice(0, maxChars - 1)}…` : label
+  const w = Math.max(CONCEPT_W, Math.min(120, text.length * 6.5 + 20))
+  return { w, h: CONCEPT_H, text }
+}
+
 export function rectsOverlap(
-  ax: number, ay: number,
-  bx: number, by: number,
+  ax: number, ay: number, aw: number, ah: number,
+  bx: number, by: number, bw: number, bh: number,
   padX: number, padY: number,
 ): boolean {
-  return Math.abs(ax - bx) < (NODE_W + padX) && Math.abs(ay - by) < (NODE_H + padY)
+  return Math.abs(ax - bx) < (aw + bw) / 2 + padX
+    && Math.abs(ay - by) < (ah + bh) / 2 + padY
+}
+
+function nodeSize(node: GraphNode): { w: number; h: number } {
+  if (node.kind === 'concept') {
+    const m = measureConceptNode(node.label)
+    return { w: m.w, h: m.h }
+  }
+  const m = measurePaperNode(node.label)
+  return { w: m.w, h: m.h }
+}
+
+export function nodesOverlap(a: GraphNode, b: GraphNode, padX = 16, padY = 14): boolean {
+  if (a.kind === 'concept' || b.kind === 'concept') return false
+  const sa = nodeSize(a)
+  const sb = nodeSize(b)
+  return rectsOverlap(a.x, a.y, sa.w, sa.h, b.x, b.y, sb.w, sb.h, padX, padY)
+}
+
+export function resolveNodeOverlaps(nodes: GraphNode[]): GraphNode[] {
+  const concepts = nodes.filter((n) => n.kind === 'concept')
+  const papers = nodes.filter((n) => n.kind !== 'concept')
+  let placed = papers.map((n) => ({ ...n }))
+  for (let pass = 0; pass < 8; pass++) {
+    let moved = false
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        if (!nodesOverlap(placed[i], placed[j])) continue
+        const others = placed.filter((_, idx) => idx !== j)
+        placed[j] = positionNode(placed[j], others)
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
+  return [...placed, ...concepts]
 }
 
 export function positionNode(node: GraphNode, existingNodes: GraphNode[]): GraphNode {
@@ -91,18 +168,23 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
     return { ...node, x: 0, y: 0, rotation: rotationFor(hashId(node.id) + 3) }
   }
 
+  const size = nodeSize(node)
   const baseX = xFromYear(node.year)
   const baseY = yFromCategory(node.category, hashId(node.id))
 
-  const candidates: [number, number][] = [
-    [0, 0],
-    [0, -80], [0, 80],
-    [-28, -80], [28, -80], [-28, 80], [28, 80],
-    [0, -160], [0, 160],
-    [-40, -160], [40, -160], [-40, 160], [40, 160],
-    [0, -240], [0, 240],
-    [-60, -240], [60, -240], [-60, 240], [60, 240],
-  ]
+  const candidates: [number, number][] = [[0, 0]]
+  for (let ring = 1; ring <= 10; ring++) {
+    const rY = ring * 72
+    const rX = ring * 36
+    candidates.push([0, -rY], [0, rY])
+    for (let step = 1; step <= ring; step++) {
+      const dx = step * rX
+      candidates.push(
+        [dx, -rY], [-dx, -rY], [dx, rY], [-dx, rY],
+        [dx, 0], [-dx, 0],
+      )
+    }
+  }
 
   let chosenX = baseX
   let chosenY = baseY
@@ -114,12 +196,21 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
     for (const other of existingNodes) {
       if (other.id === node.id) continue
       if (other.kind === 'concept') continue
-      if (rectsOverlap(tx, ty, other.x, other.y, 24, 22)) { collide = true; break }
+      const os = nodeSize(other)
+      if (rectsOverlap(tx, ty, size.w, size.h, other.x, other.y, os.w, os.h, 18, 16)) {
+        collide = true
+        break
+      }
     }
-    if (!collide) { chosenX = tx; chosenY = ty; break }
+    if (!collide) {
+      chosenX = tx
+      chosenY = ty
+      break
+    }
   }
 
   chosenY = Math.max(110, Math.min(CANVAS_H - 110, chosenY))
+  chosenX = Math.max(80 + size.w / 2, Math.min(CANVAS_W - 80 - size.w / 2, chosenX))
   const rotation = rotationFor(hashId(node.id) + 3)
 
   return { ...node, x: chosenX, y: chosenY, rotation }

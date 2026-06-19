@@ -1,5 +1,5 @@
 import type { AppState, ChatMessage } from './types'
-import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode } from './data'
+import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode, resolveNodeOverlaps } from './data'
 import { API_BASE_URL } from './config'
 import { capture } from './analytics'
 
@@ -58,6 +58,7 @@ export function loadState(): AppState {
       positioned.push(missing ? positionNode(node, positioned) : node)
     }
     parsed.nodes = positioned
+    parsed.nodes = resolveNodeOverlaps(parsed.nodes)
     parsed.newIds = []
     return parsed as AppState
   } catch {
@@ -232,6 +233,8 @@ export function applyTutorResult(state: AppState, data: TutorResponse): AppState
   next.newIds = accepted
   if (focusId && allNodeIds.has(focusId)) next.focusId = focusId
   else if (accepted.length) next.focusId = accepted[0]
+
+  if (accepted.length) next.nodes = resolveNodeOverlaps(next.nodes)
 
   return next
 }
