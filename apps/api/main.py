@@ -16,15 +16,18 @@ from tutor import get_ai_reply
 app = FastAPI()
 
 DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+DEFAULT_ORIGIN_REGEX = r"https://.*\.vercel\.app"
 ALLOW_ORIGINS = [
     o.strip()
     for o in os.getenv("ALLOW_ORIGINS", DEFAULT_ORIGINS).split(",")
     if o.strip()
 ]
+ALLOW_ORIGIN_REGEX = os.getenv("ALLOW_ORIGIN_REGEX", DEFAULT_ORIGIN_REGEX).strip()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOW_ORIGINS,
+    allow_origin_regex=ALLOW_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

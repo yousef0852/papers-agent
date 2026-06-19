@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
-import { loadState, saveState, resetState, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
+import { loadState, saveState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
 import { getCategoryStyles, REL_LABELS } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
@@ -149,8 +149,10 @@ export default function Home() {
   }
 
   async function handleReset() {
-    resetState()
+    cancelPendingNotebookSync()
     setSelectedId(null)
+    setChatOpen(false)
+    setChatFullscreen(false)
     setLoading(true)
     try {
       const data = await resetNotebookOnApi()

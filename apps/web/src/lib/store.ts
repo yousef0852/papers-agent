@@ -5,6 +5,13 @@ import { capture } from './analytics'
 
 const NOTEBOOK_ID = 'seed'
 
+/** Bumped on reset so in-flight PUTs from chat cannot overwrite a fresh seed. */
+let notebookSyncGeneration = 0
+
+export function cancelPendingNotebookSync() {
+  notebookSyncGeneration += 1
+}
+
 interface TutorResponse {
   reply?: string
   focus?: string | null
@@ -260,16 +267,19 @@ function stateToApiPayload(state: AppState) {
 }
 
 export async function persistNotebookToApi(state: AppState) {
+  const generation = notebookSyncGeneration
   const payload = stateToApiPayload(state)
   const res = await fetch(`${API_BASE_URL}/notebooks/${NOTEBOOK_ID}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+  if (generation !== notebookSyncGeneration) return
   if (!res.ok) throw new Error(`API error: ${res.status}`)
 }
 
 export async function resetNotebookOnApi(): Promise<unknown> {
+  cancelPendingNotebookSync()
   const res = await fetch(`${API_BASE_URL}/notebooks/${NOTEBOOK_ID}/reset`, {
     method: 'POST',
   })
