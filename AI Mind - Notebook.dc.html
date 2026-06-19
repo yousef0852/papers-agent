@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="app/globals.css" />
+</helmet>
+<div class="app graph-only">
+  <header class="header">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="14" cy="14" r="5" fill="#A67C52"></circle>
+        <circle cx="6" cy="8" r="3" fill="#A67C52" opacity="0.7"></circle>
+        <circle cx="22" cy="8" r="3.5" fill="#A67C52" opacity="0.85"></circle>
+        <circle cx="5" cy="20" r="2.5" fill="#7A9B7F" opacity="0.8"></circle>
+        <circle cx="22" cy="20" r="2" fill="#7A9B7F" opacity="0.7"></circle>
+        <circle cx="14" cy="4" r="2" fill="#A67C52" opacity="0.5"></circle>
+        <line x1="14" y1="14" x2="6" y2="8" stroke="#C9B8A8" stroke-width="1"></line>
+        <line x1="14" y1="14" x2="22" y2="8" stroke="#C9B8A8" stroke-width="1"></line>
+        <line x1="14" y1="14" x2="5" y2="20" stroke="#C9B8A8" stroke-width="1"></line>
+        <line x1="14" y1="14" x2="22" y2="20" stroke="#C9B8A8" stroke-width="1"></line>
+        <line x1="14" y1="14" x2="14" y2="4" stroke="#C9B8A8" stroke-width="1"></line>
+        <line x1="6" y1="8" x2="14" y2="4" stroke="#C9B8A8" stroke-width="0.75"></line>
+      </svg>
+      <span class="brand-mark">AI Mind</span>
+    </div>
+    <div class="legend">
+      <sc-for list="{{ legendItems }}" as="item" hint-placeholder-count="5">
+        <div class="legend-item">
+          <span class="legend-swatch" style="{{ item.swatchStyle }}"></span>
+          <span>{{ item.label }}</span>
+        </div>
+      </sc-for>
+      <span class="legend-stat">{{ statLine }}</span>
+      <button class="header-btn ghost" onClick="{{ toggleTheme }}" title="Toggle theme">{{ themeLabel }}</button>
+      <button class="header-btn ghost" title="Export notebook as JSON">Export</button>
+      <button class="header-btn ghost" onClick="{{ openReset }}" title="Reset notebook">Reset</button>
+    </div>
+  </header>
+
+  <div class="canvas-wrap">
+    <div class="graph-viewport {{ panClass }}" onWheel="{{ onWheel }}" onMouseDown="{{ onPanStart }}">
+      <div class="graph-zoom-controls" onClick="{{ stop }}">
+        <button type="button" class="graph-zoom-btn" onClick="{{ zoomIn }}" title="Zoom in" aria-label="Zoom in">+</button>
+        <button type="button" class="graph-zoom-btn" onClick="{{ zoomOut }}" title="Zoom out" aria-label="Zoom out">−</button>
+        <button type="button" class="graph-zoom-btn graph-zoom-btn--text {{ handClass }}" onClick="{{ toggleHand }}" title="Pan mode (H) — drag to move canvas">Hand</button>
+        <button type="button" class="graph-zoom-btn graph-zoom-btn--text" onClick="{{ focusSelected }}" disabled="{{ noSelection }}" title="Zoom to selected node">Focus</button>
+        <button type="button" class="graph-zoom-btn graph-zoom-btn--text" onClick="{{ fitAll }}" title="Reset zoom and pan">Fit</button>
+      </div>
+      <svg class="board" width="100%" height="720" viewBox="0 0 1600 720" preserveAspectRatio="xMidYMid meet" onClick="{{ clearSelection }}">
+        <defs>
+          <marker id="arrow-soft" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+            <path d="M1 1 L11 6 L1 11" fill="none" stroke="var(--svg-arrow)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"></path>
+          </marker>
+          <filter id="node-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#2a2418" flood-opacity="0.09"></feDropShadow>
+          </filter>
+          <filter id="node-shadow-strong" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#2a2418" flood-opacity="0.22"></feDropShadow>
+          </filter>
+        </defs>
+
+        <g class="graph-grid">{{ gridEls }}</g>
+        <g class="graph-content" transform="{{ contentTransform }}">{{ contentEls }}</g>
+      </svg>
+    </div>
+    <div class="folio">folio I · 2026</div>
+  </div>
+
+  <sc-if value="{{ inspectorNode }}" hint-placeholder-val="{{ false }}">
+    <div class="inspector {{ inspectorNode.sideClass }}">
+      <div class="insp-row">
+        <span class="insp-year">{{ inspectorNode.year }}</span>
+        <div class="insp-row-actions">
+          <span class="insp-badge" style="{{ inspectorNode.badgeStyle }}">{{ inspectorNode.catLabel }}</span>
+          <button type="button" class="insp-close" onClick="{{ clearSelection }}" aria-label="Close">×</button>
+        </div>
+      </div>
+      <div class="insp-title">{{ inspectorNode.label }}</div>
+      <div class="insp-summary">{{ inspectorNode.summary }}</div>
+      <sc-if value="{{ inspectorNode.hasKeyPoints }}" hint-placeholder-val="{{ true }}">
+        <div class="insp-keypoints">
+          <div class="insp-keypoints-head">Key points</div>
+          <ul>
+            <sc-for list="{{ inspectorNode.keyPoints }}" as="k" hint-placeholder-count="3">
+              <li>{{ k.text }}</li>
+            </sc-for>
+          </ul>
+        </div>
+      </sc-if>
+      <sc-if value="{{ inspectorNode.hasAnnots }}" hint-placeholder-val="{{ false }}">
+        <div class="insp-annots">
+          <div class="insp-annots-head">From the margins</div>
+          <ul>
+            <sc-for list="{{ inspectorNode.annots }}" as="a" hint-placeholder-count="2">
+              <li>{{ a.text }}</li>
+            </sc-for>
+          </ul>
+        </div>
+      </sc-if>
+      <div class="insp-rel">
+        <span class="insp-rel-head">Connections</span>
+        <ul>
+          <sc-for list="{{ inspectorNode.related }}" as="r" hint-placeholder-count="2">
+            <li>{{ r.label }}</li>
+          </sc-for>
+        </ul>
+      </div>
+    </div>
+  </sc-if>
+
+  <button class="chat-fab {{ fabClass }}" onClick="{{ openChat }}" aria-label="Open AI Tutor">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M14 1H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2v3l3-3h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path>
+    </svg>
+    <span>Chat with Tutor</span>
+  </button>
+
+  <div class="{{ chatOverlayClass }}" role="dialog" aria-modal="true" aria-label="AI Tutor">
+    <div class="chat-page">
+      <header class="chat-head">
+        <div>
+          <div class="chat-title">Knowledge Assistant</div>
+          <div class="chat-sub">AI History Tutor</div>
+        </div>
+        <div class="chat-head-actions">
+          <button class="chat-head-btn" onClick="{{ toggleFullscreen }}" title="Full screen">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M1 5.5V1h4.5M9.5 1H14v4.5M14 9.5V14H9.5M5.5 14H1V9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </button>
+          <button class="chat-head-btn" onClick="{{ closeChat }}" title="Close">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+          </button>
+        </div>
+      </header>
+      <div class="chat-inner">
+        <div class="chat-scroll">
+          <sc-for list="{{ messages }}" as="m" hint-placeholder-count="3">
+            <div class="{{ m.cls }}">
+              <div class="msg-meta">
+                <span>{{ m.who }}</span>
+                <sc-if value="{{ m.tag }}" hint-placeholder-val="{{ false }}"><span class="meta-tag">{{ m.tag }}</span></sc-if>
+              </div>
+              <div class="msg-body">{{ m.content }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="composer">
+          <textarea placeholder="Ask about any idea in the history of artificial intelligence…" rows="3"></textarea>
+          <div class="composer-row">
+            <span class="composer-hint">enter to send · shift+enter newline</span>
+            <button class="send-btn" disabled="{{ true }}">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ showReset }}" hint-placeholder-val="{{ false }}">
+    <div class="reset-modal-backdrop" onClick="{{ closeReset }}" role="presentation">
+      <div class="reset-modal" role="dialog" aria-modal="true" onClick="{{ stop }}">
+        <div class="reset-modal-title">Reset notebook?</div>
+        <div class="reset-modal-body">All nodes, edges, and chat history will be cleared on this device and the server. This cannot be undone.</div>
+        <div class="reset-modal-actions">
+          <button type="button" class="reset-modal-btn cancel" onClick="{{ closeReset }}">Cancel</button>
+          <button type="button" class="reset-modal-btn confirm" onClick="{{ closeReset }}">Reset</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    theme: 'dark',
+    selectedId: null,
+    chatOpen: false,
+    fullscreen: false,
+    panMode: false,
+    zoom: 1,
+    pan: { x: 0, y: 0 },
+    showReset: false,
+  };
+
+  // ── constants ──
+  CW = 1600; CH = 720; YMIN = 1940; YMAX = 2026;
+
+  STYLES = {
+    light: {
+      foundations:  { fill: '#EDE5D0', stroke: '#A67C52', text: '#1A2332', label: 'Foundations' },
+      vision:       { fill: '#D8E6D8', stroke: '#7A9B7F', text: '#1A2332', label: 'Vision' },
+      language:     { fill: '#EAD8CC', stroke: '#C47A52', text: '#1A2332', label: 'Language' },
+      rl:           { fill: '#D0D8E8', stroke: '#5A7AAA', text: '#1A2332', label: 'Reinforcement' },
+      architecture: { fill: '#E8E0CC', stroke: '#A68C42', text: '#1A2332', label: 'Architecture' },
+    },
+    dark: {
+      foundations:  { fill: '#2A2418', stroke: '#D4956B', text: '#E8E6E1', label: 'Foundations' },
+      vision:       { fill: '#1E2E20', stroke: '#7A9B7F', text: '#E8E6E1', label: 'Vision' },
+      language:     { fill: '#2E2018', stroke: '#D4956B', text: '#E8E6E1', label: 'Language' },
+      rl:           { fill: '#1A2030', stroke: '#7A9BAA', text: '#E8E6E1', label: 'Reinforcement' },
+      architecture: { fill: '#2A2418', stroke: '#C8A852', text: '#E8E6E1', label: 'Architecture' },
+    },
+  };
+
+  LANE_FRACS = { vision: 0.20, rl: 0.36, foundations: 0.52, architecture: 0.64, language: 0.80 };
+  LANE_ORDER = ['vision', 'rl', 'foundations', 'architecture', 'language'];
+  LEGEND_ORDER = ['foundations', 'vision', 'language', 'rl', 'architecture'];
+
+  REL = {
+    extends: { en: 'extends', dash: '' },
+    enables: { en: 'enables', dash: '' },
+    applies: { en: 'applies to', dash: '4 3' },
+    uses: { en: 'uses', dash: '4 3' },
+    inspired_by: { en: 'inspired by', dash: '2 4' },
+  };
+
+  NODES = [
+    { id: 'mp_neuron', label: 'McCulloch–Pitts', year: 1943, category: 'foundations', x: 160, y: 374, summary: 'First mathematical model of a neuron as a logical gate — the seed of every neural network to come.' },
+    { id: 'perceptron', label: 'Perceptron', year: 1958, category: 'foundations', x: 400, y: 374, summary: "Rosenblatt's first trainable neural network, learning from real data." },
+    { id: 'backprop', label: 'Backpropagation', year: 1986, category: 'foundations', x: 770, y: 374, summary: 'Rumelhart, Hinton, Williams — the algorithm that finally trained deep networks.' },
+    { id: 'cnn', label: 'LeNet · CNN', year: 1989, category: 'vision', x: 900, y: 150, summary: 'LeCun — convolutional layers that read images by sliding learned filters.' },
+    { id: 'lstm', label: 'LSTM', year: 1997, category: 'language', x: 1010, y: 560, summary: 'Hochreiter & Schmidhuber — solved the vanishing-gradient problem in recurrent nets.' },
+    { id: 'transformer', label: 'Transformer', year: 2017, category: 'architecture', x: 1140, y: 470, summary: 'Vaswani et al. — Attention Is All You Need. The substrate of every modern LLM.' },
+    { id: 'word2vec', label: 'word2vec', year: 2013, category: 'language', x: 1120, y: 650, summary: 'Mikolov — turning words into semantic vectors you could do arithmetic on.' },
+    { id: 'attention', label: 'Bahdanau Attention', year: 2014, category: 'language', x: 1320, y: 500, summary: 'Bahdanau — letting the decoder look back at every part of the source.' },
+    { id: 'seq2seq', label: 'Seq2Seq', year: 2014, category: 'language', x: 1300, y: 650, summary: 'Sutskever — an encoder/decoder pair for machine translation.' },
+    { id: 'bert_gpt', label: 'BERT · GPT', year: 2018, category: 'language', x: 1470, y: 600, summary: 'Massive pre-training on raw text. The opening of the large-language-model era.' },
+  ];
+
+  EDGES = [
+    { from: 'mp_neuron', to: 'perceptron', type: 'extends' },
+    { from: 'perceptron', to: 'backprop', type: 'enables' },
+    { from: 'backprop', to: 'cnn', type: 'applies' },
+    { from: 'backprop', to: 'lstm', type: 'applies' },
+    { from: 'lstm', to: 'seq2seq', type: 'uses' },
+    { from: 'word2vec', to: 'seq2seq', type: 'inspired_by' },
+    { from: 'seq2seq', to: 'attention', type: 'extends' },
+    { from: 'attention', to: 'transformer', type: 'extends' },
+    { from: 'transformer', to: 'bert_gpt', type: 'extends' },
+  ];
+
+  ANNOTS = {
+    transformer: [
+      { text: 'Self-attention replaced recurrence entirely — every token sees every other.' },
+      { text: 'The "Is All You Need" title aged into one of the most cited claims in ML.' },
+    ],
+  };
+
+  // In production these are generated by the tutor when the node is created.
+  KEYPOINTS = {
+    mp_neuron: [
+      'Modeled a neuron as a binary threshold logic unit.',
+      'Proved networks of them can compute any logical function.',
+      'Purely theoretical — weights were fixed by hand, no learning yet.',
+    ],
+    perceptron: [
+      'Added a learning rule that tunes weights from labeled examples.',
+      'First model proven to converge on linearly-separable data.',
+      'Minsky & Papert (1969) showed it can\u2019t solve XOR, cooling the field.',
+    ],
+    backprop: [
+      'Computes gradients through many layers via the chain rule.',
+      'Made training multi-layer networks practical for the first time.',
+      'Still the core of how nearly every modern network learns.',
+    ],
+    cnn: [
+      'Weight-sharing convolutions exploit the 2D structure of images.',
+      'Far fewer parameters than a fully-connected net of the same reach.',
+      'Powered early commercial digit recognition (cheques, ZIP codes).',
+    ],
+    lstm: [
+      'Gated memory cells retain information across long sequences.',
+      'Directly tackled the vanishing-gradient problem in RNNs.',
+      'Dominated speech and translation until Transformers arrived.',
+    ],
+    transformer: [
+      'Replaced recurrence with pure self-attention — fully parallel.',
+      'Scales with data and compute better than any prior architecture.',
+      'The foundation of GPT, BERT, and essentially every modern LLM.',
+    ],
+    word2vec: [
+      'Learns dense word vectors where geometry encodes meaning.',
+      'Famous for analogies: king \u2212 man + woman \u2248 queen.',
+      'Made transfer of semantic knowledge cheap and ubiquitous.',
+    ],
+    attention: [
+      'Lets the decoder focus on the relevant source words dynamically.',
+      'Removed the fixed-length bottleneck of seq2seq encoders.',
+      'The conceptual seed the Transformer pushed to its limit.',
+    ],
+    seq2seq: [
+      'Encoder compresses the input; decoder generates the output.',
+      'Framed machine translation as end-to-end neural learning.',
+      'Exposed the bottleneck that attention was invented to fix.',
+    ],
+    bert_gpt: [
+      'Pretrain on raw text at scale, then fine-tune per task.',
+      'BERT reads bidirectionally; GPT generates left-to-right.',
+      'Kicked off the era of general-purpose foundation models.',
+    ],
+  };
+
+  componentDidMount() {
+    this.applyTheme();
+    this._onUp = () => { this._drag = null; };
+    this._onMove = (e) => {
+      if (!this._drag) return;
+      const s = this.state;
+      const rect = this._svgRect();
+      const sx = this.CW / (rect ? rect.width : this.CW);
+      const sy = this.CH / (rect ? rect.height : this.CH);
+      this.setState({ pan: this._clamp({ x: this._drag.panX + (e.clientX - this._drag.x) * sx, y: this._drag.panY + (e.clientY - this._drag.y) * sy }, s.zoom) });
+    };
+    window.addEventListener('mousemove', this._onMove);
+    window.addEventListener('mouseup', this._onUp);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('mousemove', this._onMove);
+    window.removeEventListener('mouseup', this._onUp);
+  }
+  componentDidUpdate(_, prev) { if (prev.theme !== this.state.theme) this.applyTheme(); }
+  applyTheme() { document.documentElement.classList.toggle('dark', this.state.theme === 'dark'); }
+
+  _svgRect() {
+    const el = document.querySelector('.board');
+    return el ? el.getBoundingClientRect() : null;
+  }
+
+  xFromYear(year) {
+    const left = 110, right = this.CW - 110;
+    const t = Math.max(0, Math.min(1, (year - this.YMIN) / (this.YMAX - this.YMIN)));
+    return left + t * (right - left);
+  }
+
+  hashId(id) { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0; return Math.abs(h); }
+
+  wrap(label) {
+    if (label.length <= 15) return [label];
+    const words = label.split(/\s+/);
+    const lines = []; let cur = '';
+    for (const w of words) {
+      const next = cur ? cur + ' ' + w : w;
+      if (next.length <= 15) { cur = next; } else { if (cur) lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines.slice(0, 2);
+  }
+
+  size(n) { const lines = this.wrap(n.label); return { w: 148, h: lines.length > 1 ? 72 : 60, lines }; }
+
+  edgePath(a, b, bendSign) {
+    const sa = this.size(a), sb = this.size(b);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const ux = dx / len, uy = dy / len;
+    const ahx = sa.w / 2 - 4, ahy = sa.h / 2 - 4, bhx = sb.w / 2 - 4, bhy = sb.h / 2 - 4;
+    const sX = a.x + ux * (Math.abs(ux) > Math.abs(uy) ? ahx : ahx * 0.6);
+    const sY = a.y + uy * (Math.abs(uy) > Math.abs(ux) ? ahy : ahy * 0.6);
+    const eX = b.x - ux * (Math.abs(ux) > Math.abs(uy) ? bhx : bhx * 0.6);
+    const eY = b.y - uy * (Math.abs(uy) > Math.abs(ux) ? bhy : bhy * 0.6);
+    const mx = (sX + eX) / 2, my = (sY + eY) / 2;
+    const px = -uy, py = ux;
+    const bend = Math.min(72, 28 + len * 0.07) * bendSign;
+    const cx1 = mx + px * bend * 0.65, cy1 = my + py * bend * 0.65;
+    const f = (v) => v.toFixed(1);
+    return `M ${f(sX)} ${f(sY)} Q ${f(cx1)} ${f(cy1)} ${f(eX)} ${f(eY)}`;
+  }
+
+  _clamp(pan, zoom) {
+    const mx = this.CW * 0.45 * zoom + 120, my = this.CH * 0.45 * zoom + 120;
+    return { x: Math.max(-mx, Math.min(mx, pan.x)), y: Math.max(-my, Math.min(my, pan.y)) };
+  }
+  _adjustZoom(factor) {
+    const z = this.state.zoom;
+    const next = Math.max(0.55, Math.min(2.2, z * factor));
+    const pan = this._clamp({ x: this.state.pan.x * (next / z), y: this.state.pan.y * (next / z) }, next);
+    this.setState({ zoom: next, pan });
+  }
+
+  renderVals() {
+    const s = this.state;
+    document.documentElement.classList.toggle('dark', s.theme === 'dark');
+    const styles = this.STYLES[s.theme];
+    const nodeById = {}; this.NODES.forEach(n => nodeById[n.id] = n);
+
+    // selection adjacency
+    let relNodes = null, relEdges = null;
+    if (s.selectedId) {
+      relNodes = new Set([s.selectedId]); relEdges = new Set();
+      this.EDGES.forEach((e, i) => { if (e.from === s.selectedId || e.to === s.selectedId) { relNodes.add(e.from); relNodes.add(e.to); relEdges.add(i); } });
+    }
+
+    const h = React.createElement;
+
+    // ── sticky axis grid (drawn in screen space, re-projected from the live transform) ──
+    // Labels stay pinned to the viewport edges (years at the bottom, lanes at the left);
+    // only the tick/baseline POSITIONS track the nodes so alignment never breaks.
+    const z = s.zoom, panx = s.pan.x, pany = s.pan.y;
+    const projX = (cx) => panx + 800 * (1 - z) + z * cx;
+    const projY = (cy) => pany + 360 * (1 - z) + z * cy;
+    const gridEls = [];
+
+    // lanes — labels pinned left, baseline tracks the lane height
+    this.LANE_ORDER.forEach(l => {
+      const yy = projY(this.LANE_FRACS[l] * this.CH);
+      if (yy < 24 || yy > 698) return;
+      gridEls.push(h('g', { key: 'lane-' + l }, [
+        h('line', { key: 'b', className: 'baseline', x1: 80, x2: 1520, y1: yy, y2: yy, strokeDasharray: '1 5' }),
+        h('text', { key: 't', className: 'lane-label', x: 84, y: yy - 6 }, styles[l].label.toUpperCase()),
+      ]));
+    });
+
+    // adaptive year step — subdivide the ruler the more room a decade gets on screen
+    const unitsPerDecade = z * (this.xFromYear(1960) - this.xFromYear(1950));
+    let step = 20;
+    if (unitsPerDecade >= 900) step = 1;
+    else if (unitsPerDecade >= 420) step = 2;
+    else if (unitsPerDecade >= 210) step = 5;
+    else if (unitsPerDecade >= 95) step = 10;
+    const years = [];
+    for (let y = Math.ceil(this.YMIN / step) * step; y <= this.YMAX; y += step) years.push(y);
+    if (years[years.length - 1] !== this.YMAX) years.push(this.YMAX);
+    years.forEach(year => {
+      const xx = projX(this.xFromYear(year));
+      if (xx < 64 || xx > 1540) return;
+      const major = year % 10 === 0;
+      gridEls.push(h('g', { key: 'tick-' + year }, [
+        h('line', { key: 'l', className: 'axis-line', x1: xx, x2: xx, y1: 40, y2: 684, strokeDasharray: major ? '3 6' : '1 6', opacity: major ? 0.7 : 0.3 }),
+        h('text', { key: 't', className: 'tick-label', x: xx, y: 704, textAnchor: 'middle', fontWeight: (major || year === this.YMAX) ? 600 : 400 }, String(year)),
+      ]));
+    });
+
+    gridEls.push(h('text', { key: 'subtitle', className: 'tick-label', x: 800, y: 28, textAnchor: 'middle', style: { fontSize: 11 } }, 'a private chart of how machines learned to think · 1940 — 2026'));
+
+    // ── content: edges + nodes ──
+    const contentEls = [];
+    this.EDGES.forEach((e, i) => {
+      const a = nodeById[e.from], b = nodeById[e.to];
+      const rel = this.REL[e.type] || this.REL.extends;
+      const bendSign = this.hashId(e.from + '-' + e.to) % 2 === 0 ? 1 : -1;
+      const inSel = relEdges && relEdges.has(i);
+      const dim = relEdges && !inSel;
+      const hl = inSel;
+      const opacity = dim ? 0.06 : hl ? 0.82 : 0.16;
+      contentEls.push(h('g', { key: 'edge-' + i }, [
+        h('path', { key: 'p', className: 'edge-path', d: this.edgePath(a, b, bendSign), fill: 'none', stroke: 'var(--svg-edge)', strokeWidth: hl ? 1.8 : 1, strokeLinecap: 'round', strokeDasharray: rel.dash, opacity, markerEnd: hl ? 'url(#arrow-soft)' : undefined }),
+        h('text', { key: 't', className: 'edge-label' + (hl ? ' show' : ''), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 6, textAnchor: 'middle' }, rel.en),
+      ]));
+    });
+    this.NODES.forEach(n => {
+      const st = styles[n.category];
+      const sel = s.selectedId === n.id;
+      const dim = relNodes && !relNodes.has(n.id);
+      const sz = this.size(n);
+      const scale = sel ? 1.05 : 1;
+      const strokeW = sel ? 2.4 : (dim ? 1.4 : 1.6);
+      const labelY1 = sz.lines.length > 1 ? -5 : 5;
+      const labelChildren = [h('tspan', { key: 'l1', x: 0 }, sz.lines[0])];
+      if (sz.lines.length > 1) labelChildren.push(h('tspan', { key: 'l2', x: 0, dy: 14 }, sz.lines[1]));
+      contentEls.push(h('g', {
+        key: 'node-' + n.id,
+        className: 'node-g' + (sel ? ' focused' : '') + (dim ? ' dimmed' : ''),
+        transform: `translate(${n.x} ${n.y}) scale(${scale})`,
+        opacity: dim ? 0.62 : 1,
+        onClick: (ev) => { if (s.panMode) return; ev.stopPropagation(); this.setState({ selectedId: n.id }); },
+        style: { cursor: s.panMode ? 'grab' : 'pointer', pointerEvents: s.panMode ? 'none' : 'auto' },
+      }, [
+        h('rect', { key: 'r', className: 'node-rect', x: -sz.w / 2, y: -sz.h / 2, width: sz.w, height: sz.h, rx: 4, ry: 4, fill: st.fill, stroke: st.stroke, strokeWidth: strokeW, filter: sel ? 'url(#node-shadow-strong)' : 'url(#node-shadow)' }),
+        h('text', { key: 'y', x: -sz.w / 2 + 8, y: -sz.h / 2 + 14, fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 500, fill: st.text, opacity: 0.75 }, String(n.year)),
+        h('text', { key: 'lbl', x: 0, y: labelY1, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 12, fill: st.text, textAnchor: 'middle' }, labelChildren),
+      ]));
+    });
+
+    const legendItems = this.LEGEND_ORDER.map(c => ({ label: styles[c].label, swatchStyle: { background: styles[c].fill, color: styles[c].stroke } }));
+
+    // inspector
+    let inspectorNode = null;
+    if (s.selectedId) {
+      const n = nodeById[s.selectedId];
+      const st = styles[n.category];
+      const related = [];
+      this.EDGES.forEach(e => {
+        const rel = this.REL[e.type]; if (!rel) return;
+        if (e.from === n.id) related.push({ label: `${rel.en} → ${nodeById[e.to].label}` });
+        else if (e.to === n.id) related.push({ label: `${nodeById[e.from].label} ${rel.en} →` });
+      });
+      const annots = this.ANNOTS[n.id] || [];
+      const keyPoints = (this.KEYPOINTS[n.id] || []).map(text => ({ text }));
+      // Dock the card on the side OPPOSITE the node so it never covers what you clicked.
+      const side = projX(n.x) > 800 ? 'left' : 'right';
+      inspectorNode = {
+        year: n.year, label: n.label, summary: n.summary, catLabel: st.label,
+        badgeStyle: { color: st.stroke, background: st.fill + 'aa' },
+        annots, hasAnnots: annots.length > 0,
+        keyPoints, hasKeyPoints: keyPoints.length > 0,
+        related,
+        sideClass: 'inspector--' + side,
+      };
+    }
+
+    const messages = [
+      { cls: 'msg assistant', who: 'Tutor', tag: null, content: 'Welcome to your notebook. This is a living chart of how machines learned to think. Ask me about any idea, person, or paper — I\u2019ll explain it and draw it onto the map.' },
+      { cls: 'msg user', who: 'You', tag: null, content: 'How did attention lead to the Transformer?' },
+      { cls: 'msg assistant', who: 'Tutor', tag: '+1 node', content: 'Bahdanau attention (2014) let a decoder weigh every source token instead of a single fixed vector. Vaswani et al. took that idea to its limit in 2017 — dropping recurrence entirely and building the whole network out of attention. I\u2019ve drawn the Transformer onto your map.' },
+    ];
+
+    return {
+      legendItems,
+      statLine: `${this.NODES.length} nodes · ${this.EDGES.length} edges`,
+      themeLabel: s.theme === 'dark' ? '☽ Dark' : '☼ Light',
+      toggleTheme: () => { const next = s.theme === 'dark' ? 'light' : 'dark'; document.documentElement.classList.toggle('dark', next === 'dark'); this.setState({ theme: next }); },
+      openReset: () => this.setState({ showReset: true }),
+      closeReset: () => this.setState({ showReset: false }),
+      showReset: s.showReset,
+      gridEls,
+      contentEls,
+      contentTransform: `translate(${s.pan.x} ${s.pan.y}) translate(800 360) scale(${s.zoom}) translate(-800 -360)`,
+      panClass: s.panMode ? 'pan-mode' : '',
+      handClass: s.panMode ? 'active' : '',
+      noSelection: !s.selectedId,
+      stop: (e) => e.stopPropagation(),
+      clearSelection: () => { if (!s.panMode) this.setState({ selectedId: null }); },
+      zoomIn: () => this._adjustZoom(1.12),
+      zoomOut: () => this._adjustZoom(0.89),
+      toggleHand: () => this.setState({ panMode: !s.panMode }),
+      fitAll: () => this.setState({ zoom: 1, pan: { x: 0, y: 0 } }),
+      focusSelected: () => {
+        if (!s.selectedId) return;
+        const n = this.NODES.find(x => x.id === s.selectedId);
+        const zoom = 1.55;
+        this.setState({ zoom, pan: { x: -zoom * (n.x - 800), y: -zoom * (n.y - 360) } });
+      },
+      onWheel: (e) => { e.preventDefault(); this._adjustZoom(e.deltaY > 0 ? 1.08 : 0.92); },
+      onPanStart: (e) => { if (s.panMode && e.button === 0) { e.preventDefault(); this._drag = { x: e.clientX, y: e.clientY, panX: s.pan.x, panY: s.pan.y }; } },
+      inspectorNode,
+      fabClass: s.chatOpen ? 'chat-fab--hidden' : '',
+      openChat: () => this.setState({ chatOpen: true }),
+      closeChat: () => this.setState({ chatOpen: false, fullscreen: false }),
+      toggleFullscreen: () => this.setState({ fullscreen: !s.fullscreen }),
+      chatOverlayClass: 'chat-overlay' + (s.chatOpen ? ' open' : '') + (s.fullscreen ? ' fullscreen' : ''),
+      messages,
+    };
+  }
+}
+</script>
+</body>
+</html>
