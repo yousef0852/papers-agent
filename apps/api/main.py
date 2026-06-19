@@ -8,7 +8,7 @@ from schema import (
     WaitlistRequest,
     WaitlistResponse,
 )
-from repository import get_notebook, add_waitlist_entry, reset_notebook_to_seed, save_notebook
+from repository import get_notebook, add_waitlist_entry, reset_notebook, save_notebook
 from fastapi.middleware.cors import CORSMiddleware
 
 from tutor import get_ai_reply
@@ -100,7 +100,7 @@ def put_notebook(notebook_id: str, request: GraphResponse):
 )
 def post_reset_notebook(notebook_id: str):
     try:
-        return reset_notebook_to_seed(notebook_id)
+        return reset_notebook(notebook_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:

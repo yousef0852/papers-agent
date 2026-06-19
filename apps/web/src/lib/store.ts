@@ -5,7 +5,7 @@ import { capture } from './analytics'
 
 const NOTEBOOK_ID = 'seed'
 
-/** Bumped on reset so in-flight PUTs from chat cannot overwrite a fresh seed. */
+/** Bumped on reset so in-flight PUTs from chat cannot overwrite a cleared notebook. */
 let notebookSyncGeneration = 0
 
 export function cancelPendingNotebookSync() {

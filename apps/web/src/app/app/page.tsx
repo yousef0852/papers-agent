@@ -3,8 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
-import { loadState, saveState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
-import { getCategoryStyles, REL_LABELS } from '@/lib/data'
+import { loadState, saveState, createInitialState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
+import { getCategoryStyles, REL_LABELS, STORAGE_KEY } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
 import type { AppState } from '@/lib/types'
@@ -64,16 +64,15 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false
     async function init() {
-      // Returning user: keep their accumulated notebook. Never overwrite it with the seed.
-      const existing = loadState()
-      if (existing.nodes.length > 0) {
+      // Returning user (including after reset): restore saved notebook from localStorage.
+      if (localStorage.getItem(STORAGE_KEY)) {
         if (!cancelled) {
-          setState(existing)
+          setState(loadState())
           setLoading(false)
         }
         return
       }
-      // First visit: load the starter graph from the API.
+      // First visit only: load the starter graph from the API.
       try {
         const next = await fetchSeedState()
         saveState(next)
@@ -165,22 +164,19 @@ export default function Home() {
     setChatFullscreen(false)
     setResetting(true)
     setResetNotice(null)
-    setLoading(true)
     try {
-      const data = await resetNotebookOnApi()
-      const next = mapSeedToState(data)
+      await resetNotebookOnApi()
+      const next = createInitialState()
       saveState(next)
       setState(next)
       setNotebookKey((k) => k + 1)
-      setResetNotice('Notebook reset to the starter chart.')
+      setResetNotice('Notebook cleared.')
       capture('notebook_reset')
     } catch (err) {
-      console.warn('Reset re-seed failed:', err)
-      setState(loadState())
+      console.warn('Reset failed:', err)
       setResetNotice('Reset failed — please try again.')
     } finally {
       setResetting(false)
-      setLoading(false)
     }
   }
 
@@ -346,7 +342,7 @@ export default function Home() {
           >
             <div className="reset-modal-title" id="reset-modal-title">Reset notebook?</div>
             <div className="reset-modal-body">
-              All discussion and added nodes will be cleared on this device and the server.
+              All nodes, edges, and chat history will be cleared on this device and the server.
               This cannot be undone.
             </div>
             <div className="reset-modal-actions">
