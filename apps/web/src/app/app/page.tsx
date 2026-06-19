@@ -4,9 +4,10 @@ import { useState, useMemo, useEffect } from 'react'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
 import { loadState, saveState, createInitialState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
-import { getCategoryStyles, REL_LABELS, STORAGE_KEY, layoutPaperNodes, CANVAS_W } from '@/lib/data'
+import { getCategoryStyles, REL_LABELS, STORAGE_KEY, layoutPaperNodes, CANVAS_W, enrichNodesWithKeyPoints } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
+import { BrandLogo } from '@/components/BrandLogo'
 import type { AppState } from '@/lib/types'
 
 const THEME_KEY = 'ai-mind-theme'
@@ -21,7 +22,7 @@ function mapSeedToState(data: any): AppState {
     ),
   }))
   return {
-    nodes,
+    nodes: enrichNodesWithKeyPoints(nodes),
     edges: data.edges ?? [],
     messages: (data.messages ?? []).map((m: any) => ({
       role: m.role,
@@ -235,6 +236,7 @@ export default function Home() {
     <div className="app graph-only">
       <header className="header">
         <div className="brand">
+          <BrandLogo />
           <span className="brand-mark">AI Mind</span>
           <span className="brand-tag">a personal natural history of machine intelligence</span>
         </div>

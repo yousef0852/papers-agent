@@ -19,6 +19,9 @@
 }
 
 .landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-family: "Fraunces", serif;
   font-size: 22px;
   font-weight: 700;

@@ -53,6 +53,68 @@ export const REL_LABELS: RelationLabelsMap = {
   critiques:   { en: 'critiques',    dash: '6 3' },
 }
 
+/** Curated key points for seed papers (from design prototype). */
+export const SEED_KEY_POINTS: Record<string, string[]> = {
+  mp_neuron: [
+    'Modeled a neuron as a binary threshold logic unit.',
+    'Proved networks of them can compute any logical function.',
+    'Purely theoretical — weights were fixed by hand, no learning yet.',
+  ],
+  perceptron: [
+    'Added a learning rule that tunes weights from labeled examples.',
+    'First model proven to converge on linearly-separable data.',
+    "Minsky & Papert (1969) showed it can't solve XOR, cooling the field.",
+  ],
+  backprop: [
+    'Computes gradients through many layers via the chain rule.',
+    'Made training multi-layer networks practical for the first time.',
+    'Still the core of how nearly every modern network learns.',
+  ],
+  cnn: [
+    'Weight-sharing convolutions exploit the 2D structure of images.',
+    'Far fewer parameters than a fully-connected net of the same reach.',
+    'Powered early commercial digit recognition (cheques, ZIP codes).',
+  ],
+  lstm: [
+    'Gated memory cells retain information across long sequences.',
+    'Directly tackled the vanishing-gradient problem in RNNs.',
+    'Dominated speech and translation until Transformers arrived.',
+  ],
+  transformer: [
+    'Replaced recurrence with pure self-attention — fully parallel.',
+    'Scales with data and compute better than any prior architecture.',
+    'The foundation of GPT, BERT, and essentially every modern LLM.',
+  ],
+  word2vec: [
+    'Learns dense word vectors where geometry encodes meaning.',
+    'Famous for analogies: king − man + woman ≈ queen.',
+    'Made transfer of semantic knowledge cheap and ubiquitous.',
+  ],
+  attention: [
+    'Lets the decoder focus on the relevant source words dynamically.',
+    'Removed the fixed-length bottleneck of seq2seq encoders.',
+    'The conceptual seed the Transformer pushed to its limit.',
+  ],
+  seq2seq: [
+    'Encoder compresses the input; decoder generates the output.',
+    'Framed machine translation as end-to-end neural learning.',
+    'Exposed the bottleneck that attention was invented to fix.',
+  ],
+  bert_gpt: [
+    'Pretrain on raw text at scale, then fine-tune per task.',
+    'BERT reads bidirectionally; GPT generates left-to-right.',
+    'Kicked off the era of general-purpose foundation models.',
+  ],
+}
+
+export function enrichNodesWithKeyPoints(nodes: GraphNode[]): GraphNode[] {
+  return nodes.map((n) => {
+    if (n.keyPoints?.length) return n
+    const seed = SEED_KEY_POINTS[n.id]
+    return seed ? { ...n, keyPoints: seed } : n
+  })
+}
+
 export function jitter(seed: number, range: number): number {
   const x = Math.sin(seed * 9301 + 49297) * 43758.5453
   return ((x - Math.floor(x)) * 2 - 1) * range

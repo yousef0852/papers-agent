@@ -1,5 +1,5 @@
 import type { AppState, ChatMessage, GraphNode } from './types'
-import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode, layoutPaperNodes } from './data'
+import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode, layoutPaperNodes, enrichNodesWithKeyPoints } from './data'
 import { API_BASE_URL } from './config'
 import { capture } from './analytics'
 
@@ -55,7 +55,7 @@ export function loadState(): AppState {
       ...n,
       annotations: n.annotations || [],
     }))
-    parsed.nodes = layoutPaperNodes(rawNodes)
+    parsed.nodes = enrichNodesWithKeyPoints(layoutPaperNodes(rawNodes))
     parsed.newIds = []
     return parsed as AppState
   } catch {

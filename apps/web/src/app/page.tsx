@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { HeroSandboxLoader } from '@/components/landing/HeroSandboxLoader'
 import { FoundingMember } from '@/components/landing/FoundingMember'
+import { BrandLogo } from '@/components/BrandLogo'
 import './landing.css'
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function LandingPage() {
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <nav className="landing-nav">
         <Link href="/" className="landing-brand" style={{ textDecoration: 'none' }}>
+          <BrandLogo size={24} />
           AI Mind
         </Link>
         <Link href="/app" className="btn-primary">Open notebook →</Link>

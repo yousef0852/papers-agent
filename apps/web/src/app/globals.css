@@ -116,7 +116,7 @@ body:has(.app.graph-only) {
   z-index: 60;
   pointer-events: none;
 }
-.brand { display: flex; align-items: baseline; gap: 12px; pointer-events: auto; }
+.brand { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
 .brand-mark {
   font-family: "Fraunces", serif;
   font-size: 26px;
