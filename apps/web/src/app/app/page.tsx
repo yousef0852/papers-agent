@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
 import { loadState, saveState, createInitialState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
-import { getCategoryStyles, REL_LABELS, STORAGE_KEY } from '@/lib/data'
+import { getCategoryStyles, REL_LABELS, STORAGE_KEY, layoutPaperNodes } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
 import type { AppState } from '@/lib/types'
@@ -67,7 +67,9 @@ export default function Home() {
       // Returning user (including after reset): restore saved notebook from localStorage.
       if (localStorage.getItem(STORAGE_KEY)) {
         if (!cancelled) {
-          setState(loadState())
+          const loaded = loadState()
+          saveState(loaded)
+          if (!cancelled) setState(loaded)
           setLoading(false)
         }
         return
@@ -75,6 +77,7 @@ export default function Home() {
       // First visit only: load the starter graph from the API.
       try {
         const next = await fetchSeedState()
+        next.nodes = layoutPaperNodes(next.nodes)
         saveState(next)
         if (!cancelled) setState(next)
       } catch (err) {

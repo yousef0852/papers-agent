@@ -144,23 +144,74 @@ export function nodesOverlap(a: GraphNode, b: GraphNode, padX = 16, padY = 14): 
   return rectsOverlap(a.x, a.y, sa.w, sa.h, b.x, b.y, sb.w, sb.h, padX, padY)
 }
 
-export function resolveNodeOverlaps(nodes: GraphNode[]): GraphNode[] {
-  const concepts = nodes.filter((n) => n.kind === 'concept')
-  const papers = nodes.filter((n) => n.kind !== 'concept')
-  let placed = papers.map((n) => ({ ...n }))
-  for (let pass = 0; pass < 8; pass++) {
+function clampPaperNode(node: GraphNode): void {
+  const size = nodeSize(node)
+  node.x = Math.max(80 + size.w / 2, Math.min(CANVAS_W - 80 - size.w / 2, node.x))
+  node.y = Math.max(100 + size.h / 2, Math.min(CANVAS_H - 100 - size.h / 2, node.y))
+}
+
+function separatePair(a: GraphNode, b: GraphNode, padX = 28, padY = 24): boolean {
+  const sa = nodeSize(a)
+  const sb = nodeSize(b)
+  const halfW = (sa.w + sb.w) / 2 + padX
+  const halfH = (sa.h + sb.h) / 2 + padY
+  let dx = b.x - a.x
+  let dy = b.y - a.y
+  if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
+    const seed = hashId(a.id) ^ hashId(b.id)
+    dx = jitter(seed, 1)
+    dy = jitter(seed + 3, 1)
+  }
+  const overlapX = halfW - Math.abs(dx)
+  const overlapY = halfH - Math.abs(dy)
+  if (overlapX <= 0 || overlapY <= 0) return false
+
+  if (overlapX < overlapY) {
+    const push = (overlapX / 2) * (dx >= 0 ? 1 : -1)
+    a.x -= push
+    b.x += push
+  } else {
+    const push = (overlapY / 2) * (dy >= 0 ? 1 : -1)
+    a.y -= push
+    b.y += push
+  }
+  clampPaperNode(a)
+  clampPaperNode(b)
+  return true
+}
+
+function separateAll(papers: GraphNode[], iterations = 48): void {
+  for (let pass = 0; pass < iterations; pass++) {
     let moved = false
-    for (let i = 0; i < placed.length; i++) {
-      for (let j = i + 1; j < placed.length; j++) {
-        if (!nodesOverlap(placed[i], placed[j])) continue
-        const others = placed.filter((_, idx) => idx !== j)
-        placed[j] = positionNode(placed[j], others)
-        moved = true
+    for (let i = 0; i < papers.length; i++) {
+      for (let j = i + 1; j < papers.length; j++) {
+        if (separatePair(papers[i], papers[j])) moved = true
       }
     }
     if (!moved) break
   }
+}
+
+/** Full deterministic layout — ignores saved x/y so clusters never stack. */
+export function layoutPaperNodes(nodes: GraphNode[]): GraphNode[] {
+  const concepts = nodes.filter((n) => n.kind === 'concept')
+  const papers = nodes
+    .filter((n) => n.kind !== 'concept')
+    .map((n) => ({ ...n, annotations: n.annotations || [] }))
+
+  papers.sort((a, b) => a.year - b.year || a.id.localeCompare(b.id))
+
+  const placed: GraphNode[] = []
+  for (const node of papers) {
+    placed.push(positionNode(node, placed))
+  }
+
+  separateAll(placed)
   return [...placed, ...concepts]
+}
+
+export function resolveNodeOverlaps(nodes: GraphNode[]): GraphNode[] {
+  return layoutPaperNodes(nodes)
 }
 
 export function positionNode(node: GraphNode, existingNodes: GraphNode[]): GraphNode {
@@ -169,19 +220,28 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
   }
 
   const size = nodeSize(node)
-  const baseX = xFromYear(node.year)
-  const baseY = yFromCategory(node.category, hashId(node.id))
+  const nearby = existingNodes.filter(
+    (o) => o.kind !== 'concept' && Math.abs(o.year - node.year) <= 2,
+  )
+  const stackIndex = nearby.length
+  const stackBand = Math.floor(stackIndex / 4)
+  const stackSlot = stackIndex % 4
+  const stackOffsets = [-110, -36, 36, 110]
+  const baseX = xFromYear(node.year) + (stackSlot - 1.5) * 22 + stackBand * 14
+  const laneY = (LANE_FRACS[node.category as Category] ?? 0.5) * CANVAS_H
+  const baseY = laneY + stackOffsets[stackSlot] + stackBand * (stackSlot % 2 === 0 ? 56 : -56)
 
   const candidates: [number, number][] = [[0, 0]]
-  for (let ring = 1; ring <= 10; ring++) {
-    const rY = ring * 72
-    const rX = ring * 36
+  for (let ring = 1; ring <= 14; ring++) {
+    const rY = ring * 68
+    const rX = ring * 32
     candidates.push([0, -rY], [0, rY])
     for (let step = 1; step <= ring; step++) {
       const dx = step * rX
       candidates.push(
         [dx, -rY], [-dx, -rY], [dx, rY], [-dx, rY],
         [dx, 0], [-dx, 0],
+        [dx, -rY / 2], [-dx, rY / 2],
       )
     }
   }
@@ -197,7 +257,7 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
       if (other.id === node.id) continue
       if (other.kind === 'concept') continue
       const os = nodeSize(other)
-      if (rectsOverlap(tx, ty, size.w, size.h, other.x, other.y, os.w, os.h, 18, 16)) {
+      if (rectsOverlap(tx, ty, size.w, size.h, other.x, other.y, os.w, os.h, 22, 20)) {
         collide = true
         break
       }
@@ -209,9 +269,12 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
     }
   }
 
-  chosenY = Math.max(110, Math.min(CANVAS_H - 110, chosenY))
-  chosenX = Math.max(80 + size.w / 2, Math.min(CANVAS_W - 80 - size.w / 2, chosenX))
-  const rotation = rotationFor(hashId(node.id) + 3)
-
-  return { ...node, x: chosenX, y: chosenY, rotation }
+  const placed: GraphNode = {
+    ...node,
+    x: chosenX,
+    y: chosenY,
+    rotation: 0,
+  }
+  clampPaperNode(placed)
+  return placed
 }

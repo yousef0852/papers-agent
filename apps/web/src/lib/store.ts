@@ -1,5 +1,5 @@
-import type { AppState, ChatMessage } from './types'
-import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode, resolveNodeOverlaps } from './data'
+import type { AppState, ChatMessage, GraphNode } from './types'
+import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode, layoutPaperNodes } from './data'
 import { API_BASE_URL } from './config'
 import { capture } from './analytics'
 
@@ -51,14 +51,11 @@ export function loadState(): AppState {
     if (!raw) return createInitialState()
     const parsed = JSON.parse(raw)
     if (!parsed.nodes || !parsed.messages) return createInitialState()
-    const positioned: any[] = []
-    for (const n of parsed.nodes) {
-      const missing = n.kind !== 'concept' && (n.x == null || n.y == null || !Number.isFinite(n.x))
-      const node = { ...n, annotations: n.annotations || [] }
-      positioned.push(missing ? positionNode(node, positioned) : node)
-    }
-    parsed.nodes = positioned
-    parsed.nodes = resolveNodeOverlaps(parsed.nodes)
+    const rawNodes = parsed.nodes.map((n: GraphNode) => ({
+      ...n,
+      annotations: n.annotations || [],
+    }))
+    parsed.nodes = layoutPaperNodes(rawNodes)
     parsed.newIds = []
     return parsed as AppState
   } catch {
@@ -234,7 +231,7 @@ export function applyTutorResult(state: AppState, data: TutorResponse): AppState
   if (focusId && allNodeIds.has(focusId)) next.focusId = focusId
   else if (accepted.length) next.focusId = accepted[0]
 
-  if (accepted.length) next.nodes = resolveNodeOverlaps(next.nodes)
+  next.nodes = layoutPaperNodes(next.nodes)
 
   return next
 }
