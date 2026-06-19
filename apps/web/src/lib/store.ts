@@ -3,6 +3,8 @@ import { STORAGE_KEY, CATEGORY_STYLES_LIGHT, REL_LABELS, positionNode } from './
 import { API_BASE_URL } from './config'
 import { capture } from './analytics'
 
+const NOTEBOOK_ID = 'seed'
+
 interface TutorResponse {
   reply?: string
   focus?: string | null
@@ -227,6 +229,46 @@ export function applyTutorResult(state: AppState, data: TutorResponse): AppState
   return next
 }
 
+function stateToApiPayload(state: AppState) {
+  return {
+    nodes: state.nodes.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      parent_id: n.parent_id || null,
+      label: n.label,
+      year: n.year,
+      category: n.category,
+      summary: n.summary,
+      x: n.x,
+      y: n.y,
+      annotations: (n.annotations || []).map((ann) =>
+        typeof ann === 'string' ? ann : ann.text
+      ),
+    })),
+    edges: state.edges.map((e) => ({
+      from: e.from,
+      to: e.to,
+      type: e.type,
+    })),
+    messages: state.messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+  };
+}
+
+export async function persistNotebookToApi(state: AppState) {
+  const payload = stateToApiPayload(state)
+  const res = await fetch(`${API_BASE_URL}/notebooks/${NOTEBOOK_ID}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+}
+
 export async function sendUserMessage(text: string): Promise<AppState> {
   // The optimistic update in handleSendMessage (page.tsx) has already pushed the
   // user message and saved it to localStorage before this function is called.
@@ -240,6 +282,7 @@ export async function sendUserMessage(text: string): Promise<AppState> {
     const next = applyTutorResult(state, data)
     next.pending = false
     saveState(next)
+    persistNotebookToApi(next).catch((err) => console.warn('Notebook sync failed:', err))
     if (next.newIds.length) capture('node_added', { count: next.newIds.length })
     return next
   } catch (err) {
