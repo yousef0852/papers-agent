@@ -287,23 +287,31 @@ export async function resetNotebookOnApi(): Promise<unknown> {
   return res.json()
 }
 
+function wasResetDuring(generationAtStart: number): boolean {
+  return generationAtStart !== notebookSyncGeneration
+}
+
 export async function sendUserMessage(text: string): Promise<AppState> {
   // The optimistic update in handleSendMessage (page.tsx) has already pushed the
   // user message and saved it to localStorage before this function is called.
   // Loading state here gives us the version that already contains the user message.
+  const generationAtStart = notebookSyncGeneration
   const state = loadState()
   state.pending = true
   saveState(state)
 
   try {
     const data = await callTutor(state, text)
+    if (wasResetDuring(generationAtStart)) return loadState()
     const next = applyTutorResult(state, data)
     next.pending = false
+    if (wasResetDuring(generationAtStart)) return loadState()
     saveState(next)
     persistNotebookToApi(next).catch((err) => console.warn('Notebook sync failed:', err))
     if (next.newIds.length) capture('node_added', { count: next.newIds.length })
     return next
   } catch (err) {
+    if (wasResetDuring(generationAtStart)) return loadState()
     console.error(err)
     const s = loadState()
     s.messages.push({ role: 'assistant', content: '⚠️ Couldn\'t process the reply. Please try again.' })

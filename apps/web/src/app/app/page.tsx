@@ -29,9 +29,9 @@ function mapSeedToState(data: any): AppState {
     })),
     focusId: null,
     newIds: [],
-  };
-
+    pending: false,
   }
+}
 
 async function fetchSeedState(): Promise<AppState> {
   const res = await fetch(`${API_BASE_URL}/notebooks/seed`)
@@ -47,10 +47,19 @@ export default function Home() {
   const [chatFullscreen, setChatFullscreen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetNotice, setResetNotice] = useState<string | null>(null)
+  const [notebookKey, setNotebookKey] = useState(0)
 
   useEffect(() => {
     capture('notebook_opened')
   }, [])
+
+  useEffect(() => {
+    if (!resetNotice) return
+    const t = window.setTimeout(() => setResetNotice(null), 5000)
+    return () => window.clearTimeout(t)
+  }, [resetNotice])
 
   useEffect(() => {
     let cancelled = false
@@ -149,21 +158,28 @@ export default function Home() {
   }
 
   async function handleReset() {
+    if (resetting) return
     cancelPendingNotebookSync()
     setSelectedId(null)
     setChatOpen(false)
     setChatFullscreen(false)
+    setResetting(true)
+    setResetNotice(null)
     setLoading(true)
     try {
       const data = await resetNotebookOnApi()
       const next = mapSeedToState(data)
       saveState(next)
       setState(next)
+      setNotebookKey((k) => k + 1)
+      setResetNotice('Notebook reset to the starter chart.')
       capture('notebook_reset')
     } catch (err) {
       console.warn('Reset re-seed failed:', err)
       setState(loadState())
+      setResetNotice('Reset failed — please try again.')
     } finally {
+      setResetting(false)
       setLoading(false)
     }
   }
@@ -238,12 +254,20 @@ export default function Home() {
             {theme === 'dark' ? '☽ Dark' : '☼ Light'}
           </button>
           <button className="header-btn ghost" onClick={handleExport} title="Export notebook as JSON">Export</button>
-          <button className="header-btn ghost" onClick={() => setShowResetConfirm(true)} title="Reset notebook">Reset</button>
+          <button
+            className="header-btn ghost"
+            onClick={() => setShowResetConfirm(true)}
+            title="Reset notebook"
+            disabled={resetting}
+          >
+            {resetting ? 'Resetting…' : 'Reset'}
+          </button>
         </div>
       </header>
 
       <div className="canvas-wrap">
         <Graph
+          key={notebookKey}
           state={state}
           selectedId={selectedId}
           onSelectNode={handleSelect}
@@ -288,6 +312,7 @@ export default function Home() {
       </button>
 
       <ChatPanel
+        key={notebookKey}
         messages={state.messages}
         pending={state.pending}
         onSendMessage={handleSendMessage}
@@ -296,6 +321,15 @@ export default function Home() {
         onClose={() => { setChatOpen(false); setChatFullscreen(false) }}
         onToggleFullscreen={() => { setChatFullscreen(f => !f); if (!chatOpen) setChatOpen(true) }}
       />
+
+      {resetNotice && (
+        <div className="reset-notice" role="status">
+          {resetNotice}
+          <button type="button" className="reset-notice-dismiss" onClick={() => setResetNotice(null)} aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
 
       {showResetConfirm && (
         <div
@@ -327,12 +361,13 @@ export default function Home() {
               <button
                 type="button"
                 className="reset-modal-btn confirm"
+                disabled={resetting}
                 onClick={() => {
                   setShowResetConfirm(false)
                   void handleReset()
                 }}
               >
-                Reset
+                {resetting ? 'Resetting…' : 'Reset'}
               </button>
             </div>
           </div>
