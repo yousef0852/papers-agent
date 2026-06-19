@@ -8,9 +8,6 @@ import {
 } from '@/lib/data'
 
 const CONCEPT_RADIUS = 105
-const VIEW_PAD = 96
-const MIN_VW = 560
-const MIN_VH = 420
 
 interface GraphProps {
   state: AppState
@@ -71,136 +68,48 @@ function edgePath(
   const mx = (startX + endX) / 2
   const my = (startY + endY) / 2
   const px = -uy, py = ux
-  const bend = (36 + Math.min(120, len * 0.1)) * bendSign
+  const bend = Math.min(72, 28 + len * 0.07) * bendSign
   const cx1 = mx + px * bend * 0.65
   const cy1 = my + py * bend * 0.65
   return `M ${startX.toFixed(1)} ${startY.toFixed(1)} Q ${cx1.toFixed(1)} ${cy1.toFixed(1)} ${endX.toFixed(1)} ${endY.toFixed(1)}`
 }
 
-// Horizontal padding around the node cluster
+// Zoom/pan helpers
 
-interface ViewBox {
-  vx: number
-  vy: number
-  vw: number
-  vh: number
+const ZOOM_MIN = 0.55
+const ZOOM_MAX = 2.2
+const CANVAS_CX = CANVAS_W / 2
+const CANVAS_CY = CANVAS_H / 2
+
+function contentTransform(zoom: number, pan: { x: number; y: number }): string {
+  return `translate(${pan.x} ${pan.y}) translate(${CANVAS_CX} ${CANVAS_CY}) scale(${zoom}) translate(${-CANVAS_CX} ${-CANVAS_CY})`
 }
 
-function clampViewBox(box: ViewBox): ViewBox {
-  const vw = Math.max(MIN_VW, box.vw)
-  const vh = Math.max(MIN_VH, box.vh)
-  const maxW = CANVAS_W * 2.2
-  const maxH = CANVAS_H * 1.8
+function panToCenterNode(node: GraphNode, zoom: number): { x: number; y: number } {
   return {
-    vw: Math.min(maxW, vw),
-    vh: Math.min(maxH, vh),
-    vx: Math.max(-CANVAS_W * 0.3, Math.min(maxW - vw, box.vx)),
-    vy: Math.max(-CANVAS_H * 0.15, Math.min(maxH - vh, box.vy)),
+    x: -zoom * (node.x - CANVAS_CX),
+    y: -zoom * (node.y - CANVAS_CY),
   }
 }
 
-function spreadNodesAroundCenter(nodes: GraphNode[], spacingScale: number): GraphNode[] {
-  if (spacingScale === 1) return nodes
-  const papers = nodes.filter((n) => n.kind !== 'concept' && Number.isFinite(n.x))
-  if (papers.length === 0) return nodes
-
-  const cx = papers.reduce((s, n) => s + n.x, 0) / papers.length
-  const cy = papers.reduce((s, n) => s + n.y, 0) / papers.length
-
-  return nodes.map((n) => {
-    if (n.kind === 'concept') return n
-    return {
-      ...n,
-      x: cx + (n.x - cx) * spacingScale,
-      y: cy + (n.y - cy) * spacingScale,
-    }
-  })
-}
-
-function spacingScaleForZoom(userZoom: number): number {
-  // Zoom out → more space between nodes; zoom in → tighter cluster
-  return Math.max(0.35, Math.min(3.5, 1 / userZoom))
-}
-
-// Camera zoom uses a softer curve so node spacing changes are visible on screen
-const CAMERA_ZOOM_POWER = 0.55
-
-function computeLayoutViewBox(
-  nodes: GraphNode[],
-  focusTarget: string | null,
-): ViewBox {
-  const papers = nodes.filter((n) => n.kind !== 'concept' && n.x != null && Number.isFinite(n.x))
-  if (papers.length === 0) {
-    return { vx: 0, vy: 0, vw: CANVAS_W, vh: CANVAS_H }
-  }
-
-  if (focusTarget) {
-    const node = papers.find((n) => n.id === focusTarget)
-    if (node) {
-      const { w, h } = measurePaperNode(node.label)
-      const vw = Math.max(440, w + VIEW_PAD * 2.2)
-      const vh = Math.max(340, h + VIEW_PAD * 2)
-      return clampViewBox({
-        vx: node.x - vw / 2,
-        vy: node.y - vh / 2,
-        vw,
-        vh,
-      })
-    }
-  }
-
-  let minX = Infinity
-  let maxX = -Infinity
-  let minY = Infinity
-  let maxY = -Infinity
-  for (const n of papers) {
-    const { w, h } = measurePaperNode(n.label)
-    minX = Math.min(minX, n.x - w / 2)
-    maxX = Math.max(maxX, n.x + w / 2)
-    minY = Math.min(minY, n.y - h / 2)
-    maxY = Math.max(maxY, n.y + h / 2)
-  }
-
-  const spreadX = maxX - minX
-  const spreadY = maxY - minY
-  const pad = VIEW_PAD
-  const vw = Math.max(MIN_VW, spreadX + pad * 2)
-  const vh = Math.max(MIN_VH, spreadY + pad * 2, CANVAS_H * 0.45)
-  const cx = (minX + maxX) / 2
-  const cy = (minY + maxY) / 2
-
-  return clampViewBox({
-    vx: cx - vw / 2,
-    vy: cy - vh / 2,
-    vw,
-    vh,
-  })
-}
-
-function applyCameraZoom(box: ViewBox, userZoom: number, panOffset: { x: number; y: number }): ViewBox {
-  const scale = Math.pow(userZoom, CAMERA_ZOOM_POWER)
-  const cx = box.vx + box.vw / 2
-  const cy = box.vy + box.vh / 2
-  const vw = box.vw / scale
-  const vh = box.vh / scale
+function clampPan(pan: { x: number; y: number }, zoom: number): { x: number; y: number } {
+  const margin = 120
+  const maxX = CANVAS_W * 0.45 * zoom + margin
+  const maxY = CANVAS_H * 0.45 * zoom + margin
   return {
-    vx: cx - vw / 2 + panOffset.x,
-    vy: cy - vh / 2 + panOffset.y,
-    vw,
-    vh,
+    x: Math.max(-maxX, Math.min(maxX, pan.x)),
+    y: Math.max(-maxY, Math.min(maxY, pan.y)),
   }
 }
 
 export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme }: GraphProps) {
   const CATEGORY_STYLES = getCategoryStyles(theme)
   const { nodes, edges, focusId, newIds } = state
-  const papers = nodes.filter((n) => n.kind !== 'concept')
   const viewportRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null)
 
   const [userZoom, setUserZoom] = useState(1)
-  const [focusZoomId, setFocusZoomId] = useState<string | null>(null)
   const [panMode, setPanMode] = useState(false)
   const [panning, setPanning] = useState(false)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
@@ -208,10 +117,6 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
 
   const newSet = useMemo(() => new Set(newIds || []), [newIds])
-
-  useEffect(() => {
-    setFocusZoomId(selectedId)
-  }, [selectedId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -226,19 +131,10 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const focusTarget = focusZoomId || selectedId || null
-  const spacingScale = spacingScaleForZoom(userZoom)
-  const displayNodes = useMemo(
-    () => spreadNodesAroundCenter(nodes, spacingScale),
-    [nodes, spacingScale],
-  )
-  const layoutViewBox = useMemo(
-    () => computeLayoutViewBox(nodes, focusTarget),
-    [nodes, focusTarget],
-  )
-  const viewBox = useMemo(
-    () => applyCameraZoom(layoutViewBox, userZoom, panOffset),
-    [layoutViewBox, userZoom, panOffset],
+  const displayNodes = nodes
+  const contentLayerTransform = useMemo(
+    () => contentTransform(userZoom, panOffset),
+    [userZoom, panOffset],
   )
 
   const displayNodeById = useMemo(() => {
@@ -253,7 +149,14 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
   )
 
   const adjustZoom = useCallback((factor: number) => {
-    setUserZoom((z) => Math.max(0.35, Math.min(2.5, z * factor)))
+    setUserZoom((z) => {
+      const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * factor))
+      setPanOffset((pan) => clampPan({
+        x: pan.x * (next / z),
+        y: pan.y * (next / z),
+      }, next))
+      return next
+    })
   }, [])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -263,7 +166,6 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
 
   const fitAll = useCallback(() => {
     setUserZoom(1)
-    setFocusZoomId(null)
     setPanOffset({ x: 0, y: 0 })
   }, [])
 
@@ -282,13 +184,13 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
     const el = svgRef.current
     if (!drag || !el) return
     const rect = el.getBoundingClientRect()
-    const scaleX = viewBox.vw / rect.width
-    const scaleY = viewBox.vh / rect.height
-    setPanOffset({
-      x: drag.panX - (clientX - drag.x) * scaleX,
-      y: drag.panY - (clientY - drag.y) * scaleY,
-    })
-  }, [viewBox.vh, viewBox.vw])
+    const scaleX = CANVAS_W / rect.width
+    const scaleY = CANVAS_H / rect.height
+    setPanOffset(clampPan({
+      x: drag.panX + (clientX - drag.x) * scaleX,
+      y: drag.panY + (clientY - drag.y) * scaleY,
+    }, userZoom))
+  }, [userZoom])
 
   const handlePanEnd = useCallback(() => {
     dragRef.current = null
@@ -308,11 +210,13 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
   }, [panning, handlePanMove, handlePanEnd])
 
   const zoomToSelected = useCallback(() => {
-    if (selectedId) {
-      setFocusZoomId(selectedId)
-      setUserZoom(1.35)
-    }
-  }, [selectedId])
+    if (!selectedId) return
+    const node = nodes.find((n) => n.id === selectedId && n.kind !== 'concept')
+    if (!node) return
+    const zoom = 1.55
+    setUserZoom(zoom)
+    setPanOffset(panToCenterNode(node, zoom))
+  }, [nodes, selectedId])
 
   const nodeById = displayNodeById
 
@@ -372,8 +276,8 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
       }}
     >
       <div className="graph-zoom-controls" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="graph-zoom-btn" onClick={() => adjustZoom(1.15)} title="Zoom in (nodes closer)" aria-label="Zoom in">+</button>
-        <button type="button" className="graph-zoom-btn" onClick={() => adjustZoom(0.87)} title="Zoom out (nodes spread apart)" aria-label="Zoom out">−</button>
+        <button type="button" className="graph-zoom-btn" onClick={() => adjustZoom(1.12)} title="Zoom in" aria-label="Zoom in">+</button>
+        <button type="button" className="graph-zoom-btn" onClick={() => adjustZoom(0.89)} title="Zoom out" aria-label="Zoom out">−</button>
         <button
           type="button"
           className={`graph-zoom-btn graph-zoom-btn--text${panMode ? ' active' : ''}`}
@@ -394,7 +298,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
         className="board"
         width="100%"
         height={CANVAS_H}
-        viewBox={`${viewBox.vx} ${viewBox.vy} ${viewBox.vw} ${viewBox.vh}`}
+        viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
         preserveAspectRatio="xMidYMid meet"
         onClick={panMode ? undefined : onClearSelection}
       >
@@ -410,37 +314,39 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
         </filter>
       </defs>
 
-      {lanes.map((lane) => {
-        const y = LANE_FRACS[lane] * CANVAS_H
-        return (
-          <g key={lane}>
-            <line className="baseline" x1={80} x2={CANVAS_W - 80} y1={y} y2={y} strokeDasharray="1 5" />
-            <text className="lane-label" x={84} y={y - 6}>
-              {CATEGORY_STYLES[lane].label.toUpperCase()}
-            </text>
-          </g>
-        )
-      })}
+      <g className="graph-grid">
+        {lanes.map((lane) => {
+          const y = LANE_FRACS[lane] * CANVAS_H
+          return (
+            <g key={lane}>
+              <line className="baseline" x1={80} x2={CANVAS_W - 80} y1={y} y2={y} strokeDasharray="1 5" />
+              <text className="lane-label" x={84} y={y - 6}>
+                {CATEGORY_STYLES[lane].label.toUpperCase()}
+              </text>
+            </g>
+          )
+        })}
 
-      {ticks.map((year) => {
-        const x = xFromYear(year)
-        const major = year % 20 === 0
-        return (
-          <g key={year}>
-            <line className="axis-line" x1={x} x2={x} y1={40} y2={CANVAS_H - 36}
-              strokeDasharray={major ? '3 6' : '1 6'} opacity={major ? 0.7 : 0.4} />
-            <text className="tick-label" x={x} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === YEAR_MAX ? 600 : 400}>
-              {year}
-            </text>
-          </g>
-        )
-      })}
+        {ticks.map((year) => {
+          const x = xFromYear(year)
+          const major = year % 20 === 0
+          return (
+            <g key={year}>
+              <line className="axis-line" x1={x} x2={x} y1={40} y2={CANVAS_H - 36}
+                strokeDasharray={major ? '3 6' : '1 6'} opacity={major ? 0.7 : 0.4} />
+              <text className="tick-label" x={x} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === YEAR_MAX ? 600 : 400}>
+                {year}
+              </text>
+            </g>
+          )
+        })}
 
-      <text className="tick-label" x={CANVAS_W / 2} y={28} textAnchor="middle" style={{ fontSize: 11 }}>
-        a private chart of how machines learned to think · 1940 — 2026
-      </text>
+        <text className="tick-label" x={CANVAS_W / 2} y={28} textAnchor="middle" style={{ fontSize: 11 }}>
+          a private chart of how machines learned to think · 1940 — 2026
+        </text>
+      </g>
 
-      <g>
+      <g className="graph-content" transform={contentLayerTransform}>
         {edges.map((edge, i) => {
           const a = nodeById[edge.from]; const b = nodeById[edge.to]
           if (!a || !b || a.kind === 'concept' || b.kind === 'concept') return null
@@ -473,9 +379,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
             </g>
           )
         })}
-      </g>
 
-      <g>
         {displayPapers.map((node) => {
           const style = CATEGORY_STYLES[node.category] || CATEGORY_STYLES.other
           const selected = selectedId === node.id

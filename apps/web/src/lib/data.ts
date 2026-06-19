@@ -192,6 +192,34 @@ function separateAll(papers: GraphNode[], iterations = 64): void {
   }
 }
 
+function spreadDenseYearGroups(papers: GraphNode[]): void {
+  const byYear = new Map<number, GraphNode[]>()
+  for (const n of papers) {
+    if (!byYear.has(n.year)) byYear.set(n.year, [])
+    byYear.get(n.year)!.push(n)
+  }
+
+  for (const [year, group] of byYear) {
+    if (group.length <= 1) continue
+    group.sort((a, b) => a.id.localeCompare(b.id))
+    const anchorX = xFromYear(year)
+    const cols = group.length <= 3 ? group.length : 2
+    const rowH = NODE_H + 40
+    const colW = NODE_W + 52
+    const rows = Math.ceil(group.length / cols)
+
+    group.forEach((n, i) => {
+      const row = Math.floor(i / cols)
+      const col = i % cols
+      const rowCount = Math.min(cols, group.length - row * cols)
+      const rowW = (rowCount - 1) * colW
+      n.x = anchorX - rowW / 2 + col * colW
+      n.y = n.y + (row - (rows - 1) / 2) * rowH
+      clampPaperNode(n)
+    })
+  }
+}
+
 /** Full deterministic layout — ignores saved x/y so clusters never stack. */
 export function layoutPaperNodes(nodes: GraphNode[]): GraphNode[] {
   const concepts = nodes.filter((n) => n.kind === 'concept')
@@ -206,6 +234,7 @@ export function layoutPaperNodes(nodes: GraphNode[]): GraphNode[] {
     placed.push(positionNode(node, placed))
   }
 
+  spreadDenseYearGroups(placed)
   separateAll(placed)
   return [...placed, ...concepts]
 }
@@ -226,10 +255,10 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
   const stackIndex = nearby.length
   const stackBand = Math.floor(stackIndex / 4)
   const stackSlot = stackIndex % 4
-  const stackOffsets = [-110, -36, 36, 110]
-  const baseX = xFromYear(node.year) + (stackSlot - 1.5) * 22 + stackBand * 14
+  const stackOffsets = [-120, -44, 44, 120]
+  const baseX = xFromYear(node.year) + (stackSlot - 1.5) * 26 + stackBand * 18
   const laneY = (LANE_FRACS[node.category as Category] ?? 0.5) * CANVAS_H
-  const baseY = laneY + stackOffsets[stackSlot] + stackBand * (stackSlot % 2 === 0 ? 56 : -56)
+  const baseY = laneY + stackOffsets[stackSlot] + stackBand * (stackSlot % 2 === 0 ? 62 : -62)
 
   const candidates: [number, number][] = [[0, 0]]
   for (let ring = 1; ring <= 14; ring++) {
@@ -257,7 +286,7 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
       if (other.id === node.id) continue
       if (other.kind === 'concept') continue
       const os = nodeSize(other)
-      if (rectsOverlap(tx, ty, size.w, size.h, other.x, other.y, os.w, os.h, 22, 20)) {
+      if (rectsOverlap(tx, ty, size.w, size.h, other.x, other.y, os.w, os.h, 30, 26)) {
         collide = true
         break
       }
