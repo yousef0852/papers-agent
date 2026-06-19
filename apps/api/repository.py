@@ -3,6 +3,7 @@ from sqlalchemy import select
 from database import Session
 from models import Edges, Messages, Nodes, Notebook, WaitlistEntry
 from schema import Edge, GraphResponse, Message, Node
+from seed_data import seed_data
 
 
 def get_notebook(notebook_id: str) -> GraphResponse:
@@ -110,6 +111,11 @@ def save_notebook(notebook_id: str, graph: GraphResponse):
             db.rollback()
             print(f"Failed to save notebook {notebook_id}: {str(e)}")
             raise e
+
+
+def reset_notebook_to_seed(notebook_id: str) -> GraphResponse:
+    save_notebook(notebook_id, seed_data)
+    return seed_data
 
 
 def add_waitlist_entry(email: str, source: str, note: str | None = None) -> None:
