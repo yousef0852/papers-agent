@@ -281,11 +281,6 @@ export default function Home() {
           onClearSelection={handleClearSelection}
           theme={theme}
         />
-        <Inspector
-          node={inspectorNode}
-          related={relatedForInspector}
-          onClose={handleClearSelection}
-        />
         {loading && state.nodes.length === 0 && (
           <div
             style={{
@@ -306,6 +301,13 @@ export default function Home() {
         )}
         <div className="folio">folio I · {new Date().getFullYear()}</div>
       </div>
+
+      <Inspector
+        node={inspectorNode}
+        related={relatedForInspector}
+        onClose={handleClearSelection}
+        theme={theme}
+      />
 
       <button
         className={`chat-fab${chatOpen ? ' chat-fab--hidden' : ''}`}

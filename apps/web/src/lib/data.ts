@@ -2,8 +2,10 @@ import type { GraphNode, Category, CategoryStylesMap, RelationLabelsMap, LaneFra
 
 export const CANVAS_W = 1600
 export const CANVAS_H = 720
-export const NODE_W = 140
-export const NODE_H = 58
+export const NODE_W = 148
+export const NODE_H = 60
+export const NODE_LABEL_FONT = 12
+export const NODE_LINE_HEIGHT = 14
 export const YEAR_MIN = 1940
 export const YEAR_MAX = 2026
 
@@ -102,11 +104,9 @@ export function wrapNodeLabel(label: string, maxChars = 16, maxLines = 2): strin
 }
 
 export function measurePaperNode(label: string): { w: number; h: number; lines: string[] } {
-  const lines = wrapNodeLabel(label)
-  const longest = Math.max(...lines.map((l) => l.length), 1)
-  const w = Math.max(NODE_W, Math.min(240, longest * 7.5 + 28))
-  const h = NODE_H + Math.max(0, lines.length - 1) * 15
-  return { w, h, lines }
+  const lines = wrapNodeLabel(label, 15, 2)
+  const h = lines.length > 1 ? NODE_H + 12 : NODE_H
+  return { w: NODE_W, h, lines }
 }
 
 export const CONCEPT_W = 86
@@ -150,7 +150,7 @@ function clampPaperNode(node: GraphNode): void {
   node.y = Math.max(100 + size.h / 2, Math.min(CANVAS_H - 100 - size.h / 2, node.y))
 }
 
-function separatePair(a: GraphNode, b: GraphNode, padX = 28, padY = 24): boolean {
+function separatePair(a: GraphNode, b: GraphNode, padX = 34, padY = 28): boolean {
   const sa = nodeSize(a)
   const sb = nodeSize(b)
   const halfW = (sa.w + sb.w) / 2 + padX
@@ -180,7 +180,7 @@ function separatePair(a: GraphNode, b: GraphNode, padX = 28, padY = 24): boolean
   return true
 }
 
-function separateAll(papers: GraphNode[], iterations = 48): void {
+function separateAll(papers: GraphNode[], iterations = 64): void {
   for (let pass = 0; pass < iterations; pass++) {
     let moved = false
     for (let i = 0; i < papers.length; i++) {
