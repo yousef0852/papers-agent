@@ -3,37 +3,39 @@
 import { useState } from 'react'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
+import { useLocale } from '@/lib/i18n'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
-
-const TIERS = [
-  {
-    name: 'Free',
-    price: '$0',
-    cadence: '',
-    blurb: 'Try the notebook',
-    points: ['1 notebook', '30 tutor turns / mo', 'Full canvas'],
-  },
-  {
-    name: 'Scholar',
-    price: '$12',
-    cadence: '/mo',
-    blurb: 'The whole product',
-    points: ['Unlimited nodes', '500 tutor turns / mo', 'Export · spaced review'],
-    featured: true,
-  },
-  {
-    name: 'Patron',
-    price: '$24',
-    cadence: '/mo',
-    blurb: 'For power users',
-    points: ['Everything unlimited', 'Priority model', 'Early features'],
-  },
-]
 
 export function FoundingMember() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<Status>('idle')
+  const { t } = useLocale()
+
+  const TIERS = [
+    {
+      name: t.tier_free_name,
+      price: t.tier_free_price,
+      cadence: '',
+      blurb: t.tier_free_blurb,
+      points: t.tier_free_points,
+    },
+    {
+      name: t.tier_scholar_name,
+      price: t.tier_scholar_price,
+      cadence: '/mo',
+      blurb: t.tier_scholar_blurb,
+      points: t.tier_scholar_points,
+      featured: true,
+    },
+    {
+      name: t.tier_patron_name,
+      price: t.tier_patron_price,
+      cadence: '/mo',
+      blurb: t.tier_patron_blurb,
+      points: t.tier_patron_points,
+    },
+  ]
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -62,22 +64,22 @@ export function FoundingMember() {
 
   return (
     <section className="landing-pricing" id="founding">
-      <div className="section-label">Founding members</div>
+      <div className="section-label">{t.founding_label}</div>
       <h2 className="landing-section-title">
-        Free in beta. <em>$7/mo for life</em> for the first 200.
+        {t.founding_title_plain} <em>{t.founding_title_em}</em> {t.founding_title_suffix}
       </h2>
 
       <div className="pricing-grid">
-        {TIERS.map((t) => (
-          <div key={t.name} className={`pricing-card${t.featured ? ' pricing-card--featured' : ''}`}>
-            <div className="pricing-name">{t.name}</div>
+        {TIERS.map((tier) => (
+          <div key={tier.name} className={`pricing-card${tier.featured ? ' pricing-card--featured' : ''}`}>
+            <div className="pricing-name">{tier.name}</div>
             <div className="pricing-price">
-              {t.price}
-              {t.cadence && <span className="pricing-cadence">{t.cadence}</span>}
+              {tier.price}
+              {tier.cadence && <span className="pricing-cadence">{tier.cadence}</span>}
             </div>
-            <div className="pricing-blurb">{t.blurb}</div>
+            <div className="pricing-blurb">{tier.blurb}</div>
             <ul className="pricing-points">
-              {t.points.map((p) => (
+              {(tier.points as readonly string[]).map((p) => (
                 <li key={p}>{p}</li>
               ))}
             </ul>
@@ -87,32 +89,28 @@ export function FoundingMember() {
 
       <form className="founding-form" onSubmit={handleSubmit}>
         {status === 'done' ? (
-          <p className="founding-done">
-            You&rsquo;re on the list. We&rsquo;ll email your founding-member invite soon.
-          </p>
+          <p className="founding-done">{t.founding_done}</p>
         ) : (
           <>
             <input
               type="email"
               className="founding-input"
-              placeholder="you@example.com"
+              placeholder={t.email_placeholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               aria-label="Email address"
               required
             />
             <button type="submit" className="btn-primary" disabled={status === 'loading'}>
-              {status === 'loading' ? 'Reserving…' : 'Reserve my spot →'}
+              {status === 'loading' ? t.reserving : t.reserve_btn}
             </button>
           </>
         )}
         {status === 'error' && (
-          <p className="founding-error">Please enter a valid email and try again.</p>
+          <p className="founding-error">{t.founding_error}</p>
         )}
       </form>
-      <p className="founding-fineprint">
-        No charge now. We&rsquo;ll only email you when your invite is ready.
-      </p>
+      <p className="founding-fineprint">{t.founding_fineprint}</p>
     </section>
   )
 }

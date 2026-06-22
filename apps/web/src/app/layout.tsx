@@ -13,9 +13,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" dir="ltr">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('ai-mind-theme');if(t!=='light')document.documentElement.classList.add('dark')})()` }} />
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        {/* Prevent flash of wrong theme AND locale direction */}
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(){
+            var t=localStorage.getItem('ai-mind-theme');
+            if(t!=='light')document.documentElement.classList.add('dark');
+            var l=localStorage.getItem('ai-mind-locale');
+            if(l==='ar'){document.documentElement.lang='ar';document.documentElement.dir='rtl';}
+          })()`
+        }} />
       </head>
       <body>
         <Providers>{children}</Providers>
