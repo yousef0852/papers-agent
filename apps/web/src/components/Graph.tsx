@@ -321,9 +321,8 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
         </filter>
       </defs>
 
-      <g className="graph-grid">
+      <g className="graph-grid-bg">
         {lanes.map((lane) => {
-          // Sticky left: label pinned to the left edge; baseline tracks the lane height.
           const yy = panOffset.y + CANVAS_CY * (1 - userZoom) + userZoom * (LANE_FRACS[lane] * CANVAS_H)
           if (yy < 24 || yy > CANVAS_H - 22) return null
           return (
@@ -335,26 +334,6 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
             </g>
           )
         })}
-
-        {axisYears.map((year) => {
-          // Sticky bottom: label pinned to the bottom edge; tick tracks the year column.
-          const xx = panOffset.x + CANVAS_CX * (1 - userZoom) + userZoom * xFromYear(year)
-          if (xx < 64 || xx > CANVAS_W - 60) return null
-          const major = year % 10 === 0
-          return (
-            <g key={year}>
-              <line className="axis-line" x1={xx} x2={xx} y1={40} y2={CANVAS_H - 36}
-                strokeDasharray={major ? '3 6' : '1 6'} opacity={major ? 0.7 : 0.3} />
-              <text className="tick-label" x={xx} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === YEAR_MAX ? 600 : 400}>
-                {year}
-              </text>
-            </g>
-          )
-        })}
-
-        <text className="tick-label" x={CANVAS_W / 2} y={28} textAnchor="middle" style={{ fontSize: 11 }}>
-          a private chart of how machines learned to think · 1940 — 2026
-        </text>
       </g>
 
       <g className="graph-content" transform={contentLayerTransform}>
@@ -488,6 +467,27 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           )
         })()}
       </g>
+
+      <g className="graph-axis" transform={contentLayerTransform}>
+        {axisYears.map((year) => {
+          const xx = xFromYear(year)
+          const major = year % 10 === 0
+          return (
+            <g key={year}>
+              <line className="axis-line" x1={xx} x2={xx} y1={40} y2={CANVAS_H - 36}
+                strokeDasharray={major ? '3 6' : '1 6'} opacity={major ? 0.7 : 0.3}
+                vectorEffect="non-scaling-stroke" />
+              <text className="tick-label" x={xx} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === YEAR_MAX ? 600 : 400}>
+                {year}
+              </text>
+            </g>
+          )
+        })}
+      </g>
+
+      <text className="tick-label" x={CANVAS_W / 2} y={28} textAnchor="middle" style={{ fontSize: 11 }}>
+        a private chart of how machines learned to think · 1940 — 2026
+      </text>
     </svg>
     </div>
   )

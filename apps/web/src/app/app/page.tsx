@@ -233,7 +233,7 @@ export default function Home() {
   }
 
   return (
-    <div className="app graph-only">
+    <div className={`app graph-only${chatOpen ? ' chat-open' : ''}`}>
       <header className="header">
         <div className="brand">
           <BrandLogo />
