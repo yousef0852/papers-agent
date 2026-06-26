@@ -3,11 +3,13 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
+import { LangToggle } from '@/components/LangToggle'
 import { loadState, saveState, createInitialState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
 import { getCategoryStyles, REL_LABELS, STORAGE_KEY, layoutPaperNodes, CANVAS_W, enrichNodesWithKeyPoints } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
 import { BrandLogo } from '@/components/BrandLogo'
+import { useLocale } from '@/lib/i18n'
 import type { AppState } from '@/lib/types'
 
 const THEME_KEY = 'ai-mind-theme'
@@ -41,6 +43,7 @@ async function fetchSeedState(): Promise<AppState> {
 }
 
 export default function Home() {
+  const { t, isRTL } = useLocale()
   const [state, setState] = useState<AppState>({ nodes: [], edges: [], messages: [], focusId: null, newIds: [] })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
@@ -51,6 +54,7 @@ export default function Home() {
   const [resetting, setResetting] = useState(false)
   const [resetNotice, setResetNotice] = useState<string | null>(null)
   const [notebookKey, setNotebookKey] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     capture('notebook_opened')
@@ -58,14 +62,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!resetNotice) return
-    const t = window.setTimeout(() => setResetNotice(null), 5000)
-    return () => window.clearTimeout(t)
+    const timer = window.setTimeout(() => setResetNotice(null), 5000)
+    return () => window.clearTimeout(timer)
   }, [resetNotice])
 
   useEffect(() => {
     let cancelled = false
     async function init() {
-      // Returning user (including after reset): restore saved notebook from localStorage.
       if (localStorage.getItem(STORAGE_KEY)) {
         if (!cancelled) {
           const loaded = loadState()
@@ -75,7 +78,6 @@ export default function Home() {
         }
         return
       }
-      // First visit only: load the starter graph from the API.
       try {
         const next = await fetchSeedState()
         next.nodes = layoutPaperNodes(next.nodes)
@@ -89,9 +91,7 @@ export default function Home() {
       }
     }
     init()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
@@ -117,10 +117,7 @@ export default function Home() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
-      if (showResetConfirm) {
-        setShowResetConfirm(false)
-        return
-      }
+      if (showResetConfirm) { setShowResetConfirm(false); return }
       if (selectedId || state.focusId) {
         setSelectedId(null)
         setFocus(null)
@@ -140,10 +137,11 @@ export default function Home() {
 
   const inspectorSide = useMemo((): 'left' | 'right' => {
     if (!inspectorNode || inspectorNode.kind === 'concept' || !Number.isFinite(inspectorNode.x)) {
-      return 'right'
+      return isRTL ? 'left' : 'right'
     }
-    return inspectorNode.x > CANVAS_W / 2 ? 'left' : 'right'
-  }, [inspectorNode])
+    const nodeOnRight = inspectorNode.x > CANVAS_W / 2
+    return isRTL ? (nodeOnRight ? 'right' : 'left') : (nodeOnRight ? 'left' : 'right')
+  }, [inspectorNode, isRTL])
 
   const relatedForInspector = useMemo(() => {
     if (!inspectorNode) return []
@@ -189,11 +187,11 @@ export default function Home() {
       saveState(next)
       setState(next)
       setNotebookKey((k) => k + 1)
-      setResetNotice('Notebook cleared.')
+      setResetNotice(t.notice_cleared)
       capture('notebook_reset')
     } catch (err) {
       console.warn('Reset failed:', err)
-      setResetNotice('Reset failed — please try again.')
+      setResetNotice(t.notice_failed)
     } finally {
       setResetting(false)
     }
@@ -232,43 +230,55 @@ export default function Home() {
     setState(next)
   }
 
+  const categoryStyles = getCategoryStyles(theme)
+
   return (
     <div className={`app graph-only${chatOpen ? ' chat-open' : ''}`}>
       <header className="header">
         <div className="brand">
           <BrandLogo />
           <span className="brand-mark">AI Mind</span>
-          <span className="brand-tag">a personal natural history of machine intelligence</span>
+          <span className="brand-tag">{t.brand_tag}</span>
         </div>
         <div className="legend">
           {(['foundations', 'vision', 'language', 'rl', 'architecture'] as const).map((cat) => {
-            const cs = getCategoryStyles(theme)[cat]
+            const cs = categoryStyles[cat]
             return (
               <div key={cat} className="legend-item">
                 <span className="legend-swatch" style={{ background: cs.fill, color: cs.stroke }} />
-                <span>{cs.label}</span>
+                <span>{t.categories[cat]}</span>
               </div>
             )
           })}
           <span className="legend-stat">
-            {state.nodes.length} nodes · {state.edges.length} edges
+            {t.nodes_edges(state.nodes.length, state.edges.length)}
           </span>
-          <button className="header-btn ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
-            {theme === 'dark' ? '☽ Dark' : '☼ Light'}
+          <LangToggle />
+          <button className="header-btn ghost header-btn--theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
+            {theme === 'dark' ? t.theme_dark : t.theme_light}
           </button>
-          <button className="header-btn ghost" onClick={handleExport} title="Export notebook as JSON">Export</button>
+          <button className="header-btn ghost header-btn--export" onClick={handleExport} title={t.export_btn}>{t.export_btn}</button>
           <button
-            className="header-btn ghost"
+            className="header-btn ghost header-btn--reset"
             onClick={() => setShowResetConfirm(true)}
-            title="Reset notebook"
+            title={t.reset_btn}
             disabled={resetting}
           >
-            {resetting ? 'Resetting…' : 'Reset'}
+            {resetting ? t.resetting : t.reset_btn}
+          </button>
+          <button
+            className="header-btn ghost header-btn--overflow"
+            onClick={() => setMobileMenuOpen(o => !o)}
+            aria-label="More actions"
+            aria-expanded={mobileMenuOpen}
+          >
+            ···
           </button>
         </div>
       </header>
 
-      <div className="canvas-wrap">
+      {/* Canvas: always LTR — timeline has fixed visual direction */}
+      <div className="canvas-wrap" dir="ltr">
         <Graph
           key={notebookKey}
           state={state}
@@ -292,10 +302,10 @@ export default function Home() {
               pointerEvents: 'none',
             }}
           >
-            Opening your notebook…
+            {t.loading}
           </div>
         )}
-        <div className="folio">folio I · {new Date().getFullYear()}</div>
+        <div className="folio">{t.folio} · {new Date().getFullYear()}</div>
       </div>
 
       <Inspector
@@ -309,12 +319,12 @@ export default function Home() {
       <button
         className={`chat-fab${chatOpen ? ' chat-fab--hidden' : ''}`}
         onClick={() => setChatOpen(true)}
-        aria-label="Open AI Tutor"
+        aria-label={t.ai_tutor_label}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M14 1H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2v3l3-3h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1Z" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round"/>
         </svg>
-        <span>Chat with Tutor</span>
+        <span>{t.chat_fab}</span>
       </button>
 
       <ChatPanel
@@ -331,10 +341,44 @@ export default function Home() {
       {resetNotice && (
         <div className="reset-notice" role="status">
           {resetNotice}
-          <button type="button" className="reset-notice-dismiss" onClick={() => setResetNotice(null)} aria-label="Dismiss">
+          <button type="button" className="reset-notice-dismiss" onClick={() => setResetNotice(null)} aria-label={t.close}>
             ×
           </button>
         </div>
+      )}
+
+      {mobileMenuOpen && (
+        <>
+          <div
+            className="mobile-menu-backdrop"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="mobile-menu-sheet" role="menu">
+            <div className="mobile-menu-handle" aria-hidden="true" />
+            <button
+              className="mobile-menu-item"
+              role="menuitem"
+              onClick={() => { handleExport(); setMobileMenuOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M2 10v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3M8 2v8M5 5l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {t.export_btn}
+            </button>
+            <button
+              className="mobile-menu-item mobile-menu-item--danger"
+              role="menuitem"
+              onClick={() => { setShowResetConfirm(true); setMobileMenuOpen(false) }}
+              disabled={resetting}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l.8 9.1A1 1 0 0 0 4.8 14h6.4a1 1 0 0 0 1-.9L13 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {resetting ? t.resetting : t.reset_btn}
+            </button>
+          </div>
+        </>
       )}
 
       {showResetConfirm && (
@@ -350,11 +394,8 @@ export default function Home() {
             aria-labelledby="reset-modal-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="reset-modal-title" id="reset-modal-title">Reset notebook?</div>
-            <div className="reset-modal-body">
-              All nodes, edges, and chat history will be cleared on this device and the server.
-              This cannot be undone.
-            </div>
+            <div className="reset-modal-title" id="reset-modal-title">{t.reset_modal_title}</div>
+            <div className="reset-modal-body">{t.reset_modal_body}</div>
             <div className="reset-modal-actions">
               <button
                 type="button"
@@ -362,7 +403,7 @@ export default function Home() {
                 onClick={() => setShowResetConfirm(false)}
                 autoFocus
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 type="button"
@@ -373,13 +414,12 @@ export default function Home() {
                   void handleReset()
                 }}
               >
-                {resetting ? 'Resetting…' : 'Reset'}
+                {resetting ? t.resetting : t.reset_btn}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   )
 }

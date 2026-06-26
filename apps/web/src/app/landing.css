@@ -649,3 +649,37 @@
     padding: 56px 32px;
   }
 }
+
+/* ── Fix 2: Arabic strict typography for landing.css ────────────────────────── */
+html[lang="ar"] .landing-headline,
+html[lang="ar"] .landing-section-title,
+html[lang="ar"] .landing-body,
+html[lang="ar"] .hiw-body,
+html[lang="ar"] .hiw-title,
+html[lang="ar"] .pricing-blurb,
+html[lang="ar"] .pricing-points li,
+html[lang="ar"] .founding-fineprint,
+html[lang="ar"] .founding-done,
+html[lang="ar"] .founding-error,
+html[lang="ar"] .btn-primary,
+html[lang="ar"] .btn-ghost,
+html[lang="ar"] .section-label,
+html[lang="ar"] .sb-msg-text,
+html[lang="ar"] .sb-chat-head {
+  font-family: 'Noto Sans Arabic', system-ui, sans-serif !important;
+  line-height: 1.7 !important;
+}
+html[lang="ar"] .landing-headline {
+  line-height: 1.5 !important;
+  font-style: normal !important;
+}
+
+/* ── Fix 4: Hero sandbox chat — pin to bottom-right in RTL ─────────────────── */
+html[dir="rtl"] .sb-chat {
+  right: 14px;
+  left: auto;
+}
+html[dir="rtl"] .sb-nudge {
+  right: auto;
+  left: 14px;
+}

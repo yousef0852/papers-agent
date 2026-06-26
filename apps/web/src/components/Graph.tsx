@@ -111,7 +111,9 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null)
 
   const [userZoom, setUserZoom] = useState(1)
-  const [panMode, setPanMode] = useState(false)
+  const [panMode, setPanMode] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+  )
   const [panning, setPanning] = useState(false)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null)
