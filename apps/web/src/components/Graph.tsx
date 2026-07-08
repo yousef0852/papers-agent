@@ -248,14 +248,22 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
     return { nodes: r, edges: e }
   }, [active, edges, displayNodes])
 
-  const hoveredEdges = useMemo(() => {
+  const hoveredPaperId = useMemo(() => {
     if (!hoveredNodeId) return null
+    const node = displayNodeById[hoveredNodeId]
+    if (!node) return null
+    if (node.kind === 'concept' && node.parent_id) return node.parent_id
+    return hoveredNodeId
+  }, [hoveredNodeId, displayNodeById])
+
+  const hoveredEdges = useMemo(() => {
+    if (!hoveredPaperId) return null
     const set = new Set<number>()
     edges.forEach((edge, i) => {
-      if (edge.from === hoveredNodeId || edge.to === hoveredNodeId) set.add(i)
+      if (edge.from === hoveredPaperId || edge.to === hoveredPaperId) set.add(i)
     })
     return set
-  }, [hoveredNodeId, edges])
+  }, [hoveredPaperId, edges])
 
   const minPaperYear = displayPapers.length ? Math.min(...displayPapers.map(n => n.year)) : YEAR_MIN
   // Adaptive year ruler — subdivide the more room a decade occupies on screen.
@@ -350,7 +358,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           const inHover = hoveredEdges?.has(i)
           const dim = related && !inSelection
           const highlight = inSelection || inHover
-          const opacity = dim ? 0.06 : highlight ? 0.82 : hoveredEdge === i ? 0.55 : 0.14
+          const opacity = hoveredEdge === i ? 0.55 : dim ? 0.06 : highlight ? 0.82 : 0.14
           const path = edgePath(a, b, aw, ah, bw, bh, bendSign)
           const midX = (a.x + b.x) / 2
           const midY = (a.y + b.y) / 2 - 6
@@ -361,8 +369,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
                 strokeWidth={highlight ? 1.8 : 1}
                 strokeLinecap="round"
                 strokeDasharray={rel.dash} opacity={opacity} markerEnd={highlight ? 'url(#arrow-soft)' : undefined}
-                onMouseEnter={() => setHoveredEdge(i)} onMouseLeave={() => setHoveredEdge(null)}
-                onClick={(e) => e.stopPropagation()} style={{ pointerEvents: 'stroke' }}/>
+                style={{ pointerEvents: 'none' }}/>
               <text className={`edge-label ${showLabel ? 'show' : ''}`} x={midX} y={midY} textAnchor="middle">
                 {rel.en}
               </text>
@@ -428,6 +435,26 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           )
         })}
 
+        {/* Edge hit-stroke pass — invisible wide paths on top of nodes */}
+        {edges.map((edge, i) => {
+          const a = nodeById[edge.from]; const b = nodeById[edge.to]
+          if (!a || !b || a.kind === 'concept' || b.kind === 'concept') return null
+          const aw = measurePaperNode(a.label).w
+          const ah = measurePaperNode(a.label).h
+          const bw = measurePaperNode(b.label).w
+          const bh = measurePaperNode(b.label).h
+          const bendSign = hashId(`${edge.from}-${edge.to}`) % 2 === 0 ? 1 : -1
+          const path = edgePath(a, b, aw, ah, bw, bh, bendSign)
+          return (
+            <path key={'hit-'+i} d={path} fill="none" stroke="transparent" strokeWidth={10}
+              strokeLinecap="round"
+              style={{ pointerEvents: panMode ? 'none' : 'stroke', cursor: panMode ? undefined : 'pointer' }}
+              onMouseEnter={() => !panMode && setHoveredEdge(i)}
+              onMouseLeave={() => !panMode && setHoveredEdge(null)}
+              onClick={(e) => { e.stopPropagation() }} />
+          )
+        })}
+
         {active && conceptsByParent[active] && (() => {
           const parent = displayNodeById[active]
           if (!parent || parent.kind === 'concept') return null
@@ -440,7 +467,10 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
                 return (
                 <g key={c.id} className="concept-node"
                    transform={`translate(${c.cx} ${c.cy})`}
-                   onClick={(e) => { e.stopPropagation(); onSelectNode(c.id) }}>
+                   onMouseEnter={() => !panMode && setHoveredNodeId(c.id)}
+                   onMouseLeave={() => !panMode && setHoveredNodeId(null)}
+                   onClick={(e) => { e.stopPropagation(); onSelectNode(c.id) }}
+                   style={{ pointerEvents: panMode ? 'none' : 'auto' }}>
                   <line x1={parent.x - c.cx} y1={parent.y - c.cy}
                     x2={0} y2={0}
                     stroke={style.stroke} strokeWidth="0.8"

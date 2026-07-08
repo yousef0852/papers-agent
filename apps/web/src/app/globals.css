@@ -514,14 +514,18 @@ svg.board {
 
 .node-g {
   cursor: pointer;
-  transition: opacity 0.25s, transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
-  transform-origin: center;
+  transition: opacity 0.25s;
 }
 .node-rect { transition: stroke-width 0.2s, filter 0.2s; }
+.concept-node {
+  cursor: pointer;
+  transition: opacity 0.25s;
+}
 .node-g.dimmed .node-rect {
   stroke-opacity: 0.9;
 }
-.node-g:hover {
+.node-g:hover,
+.concept-node:hover {
   opacity: 1 !important;
 }
 .edge-path { transition: opacity 0.25s, stroke-width 0.2s; }
