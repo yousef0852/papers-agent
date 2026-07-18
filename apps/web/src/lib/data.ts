@@ -228,18 +228,31 @@ function separatePair(a: GraphNode, b: GraphNode, padX = 34, padY = 28): boolean
   const overlapY = halfH - Math.abs(dy)
   if (overlapX <= 0 || overlapY <= 0) return false
 
-  if (overlapX < overlapY) {
-    const push = (overlapX / 2) * (dx >= 0 ? 1 : -1)
-    a.x -= push
-    b.x += push
-  } else {
+  // Different years: only push vertically so collision avoidance can't
+  // shove a 2023 paper left of a 2017 paper on the timeline axis.
+  const sameYear = a.year === b.year
+  if (!sameYear || overlapY <= overlapX) {
     const push = (overlapY / 2) * (dy >= 0 ? 1 : -1)
     a.y -= push
     b.y += push
+  } else {
+    const push = (overlapX / 2) * (dx >= 0 ? 1 : -1)
+    a.x -= push
+    b.x += push
   }
   clampPaperNode(a)
   clampPaperNode(b)
   return true
+}
+
+/** Keep each paper near its year tick — timeline order must stay readable. */
+function snapXToYear(papers: GraphNode[]): void {
+  const maxDrift = NODE_W * 0.85
+  for (const n of papers) {
+    const anchor = xFromYear(n.year)
+    n.x = Math.max(anchor - maxDrift, Math.min(anchor + maxDrift, n.x))
+    clampPaperNode(n)
+  }
 }
 
 function separateAll(papers: GraphNode[], iterations = 64): void {
@@ -252,6 +265,7 @@ function separateAll(papers: GraphNode[], iterations = 64): void {
     }
     if (!moved) break
   }
+  snapXToYear(papers)
 }
 
 function spreadDenseYearGroups(papers: GraphNode[]): void {
@@ -322,16 +336,16 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
   const laneY = (LANE_FRACS[node.category as Category] ?? 0.5) * CANVAS_H
   const baseY = laneY + stackOffsets[stackSlot] + stackBand * (stackSlot % 2 === 0 ? 62 : -62)
 
+  // Prefer vertical offsets so papers stay near their year on the x-axis.
+  const maxDx = NODE_W * 0.7
   const candidates: [number, number][] = [[0, 0]]
   for (let ring = 1; ring <= 14; ring++) {
     const rY = ring * 68
-    const rX = ring * 32
     candidates.push([0, -rY], [0, rY])
-    for (let step = 1; step <= ring; step++) {
-      const dx = step * rX
+    for (let step = 1; step <= Math.min(ring, 2); step++) {
+      const dx = Math.min(step * 28, maxDx)
       candidates.push(
         [dx, -rY], [-dx, -rY], [dx, rY], [-dx, rY],
-        [dx, 0], [-dx, 0],
         [dx, -rY / 2], [-dx, rY / 2],
       )
     }
