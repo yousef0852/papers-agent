@@ -228,15 +228,16 @@ function separatePair(a: GraphNode, b: GraphNode, padX = 34, padY = 28): boolean
   const overlapY = halfH - Math.abs(dy)
   if (overlapX <= 0 || overlapY <= 0) return false
 
-  // Different years: only push vertically so collision avoidance can't
-  // shove a 2023 paper left of a 2017 paper on the timeline axis.
+  // Prefer vertical separation always so the year axis stays chronological.
+  // Same-year papers may nudge slightly horizontally only when almost stacked.
   const sameYear = a.year === b.year
-  if (!sameYear || overlapY <= overlapX) {
+  if (!sameYear || overlapY <= overlapX * 1.25) {
     const push = (overlapY / 2) * (dy >= 0 ? 1 : -1)
     a.y -= push
     b.y += push
   } else {
-    const push = (overlapX / 2) * (dx >= 0 ? 1 : -1)
+    const maxPush = pxPerYear() * 0.8
+    const push = Math.min(overlapX / 2, maxPush) * (dx >= 0 ? 1 : -1)
     a.x -= push
     b.x += push
   }
@@ -245,9 +246,17 @@ function separatePair(a: GraphNode, b: GraphNode, padX = 34, padY = 28): boolean
   return true
 }
 
-/** Keep each paper near its year tick — timeline order must stay readable. */
+/** Pixels between consecutive years on the timeline axis. */
+function pxPerYear(): number {
+  return (CANVAS_W - 220) / (YEAR_MAX - YEAR_MIN)
+}
+
+/**
+ * Keep each paper near its year tick.
+ * Cap drift to ~1.5 years so dense clusters can't visually jump a decade.
+ */
 function snapXToYear(papers: GraphNode[]): void {
-  const maxDrift = NODE_W * 0.85
+  const maxDrift = Math.max(18, pxPerYear() * 1.5)
   for (const n of papers) {
     const anchor = xFromYear(n.year)
     n.x = Math.max(anchor - maxDrift, Math.min(anchor + maxDrift, n.x))
@@ -266,8 +275,30 @@ function separateAll(papers: GraphNode[], iterations = 64): void {
     if (!moved) break
   }
   snapXToYear(papers)
+  // After snapping X, clear leftover overlaps with vertical-only pushes.
+  for (let pass = 0; pass < 24; pass++) {
+    let moved = false
+    for (let i = 0; i < papers.length; i++) {
+      for (let j = i + 1; j < papers.length; j++) {
+        const a = papers[i]
+        const b = papers[j]
+        if (!nodesOverlap(a, b, 34, 28)) continue
+        const dy = b.y - a.y || (hashId(a.id) > hashId(b.id) ? 1 : -1)
+        const push = ((nodeSize(a).h + nodeSize(b).h) / 2 + 28 - Math.abs(b.y - a.y)) / 2
+        if (push <= 0) continue
+        a.y -= (dy >= 0 ? 1 : -1) * push
+        b.y += (dy >= 0 ? 1 : -1) * push
+        clampPaperNode(a)
+        clampPaperNode(b)
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
+  snapXToYear(papers)
 }
 
+/** Stack same-year papers vertically on the year tick — never sideways across decades. */
 function spreadDenseYearGroups(papers: GraphNode[]): void {
   const byYear = new Map<number, GraphNode[]>()
   for (const n of papers) {
@@ -275,22 +306,19 @@ function spreadDenseYearGroups(papers: GraphNode[]): void {
     byYear.get(n.year)!.push(n)
   }
 
+  const rowH = NODE_H + 36
+  const microX = Math.min(14, pxPerYear() * 0.6)
+
   for (const [year, group] of byYear) {
     if (group.length <= 1) continue
     group.sort((a, b) => a.id.localeCompare(b.id))
     const anchorX = xFromYear(year)
-    const cols = group.length <= 3 ? group.length : 2
-    const rowH = NODE_H + 40
-    const colW = NODE_W + 52
-    const rows = Math.ceil(group.length / cols)
 
     group.forEach((n, i) => {
-      const row = Math.floor(i / cols)
-      const col = i % cols
-      const rowCount = Math.min(cols, group.length - row * cols)
-      const rowW = (rowCount - 1) * colW
-      n.x = anchorX - rowW / 2 + col * colW
-      n.y = n.y + (row - (rows - 1) / 2) * rowH
+      const row = i
+      // Tiny alternating x jitter only — keeps labels readable without breaking chronology.
+      n.x = anchorX + (i % 2 === 0 ? -microX : microX)
+      n.y = n.y + (row - (group.length - 1) / 2) * rowH
       clampPaperNode(n)
     })
   }
@@ -332,18 +360,20 @@ export function positionNode(node: GraphNode, existingNodes: GraphNode[]): Graph
   const stackBand = Math.floor(stackIndex / 4)
   const stackSlot = stackIndex % 4
   const stackOffsets = [-120, -44, 44, 120]
-  const baseX = xFromYear(node.year) + (stackSlot - 1.5) * 26 + stackBand * 18
+  // Keep base X on the year tick; only tiny jitter (±~1 year).
+  const yearPx = pxPerYear()
+  const baseX = xFromYear(node.year) + jitter(hashId(node.id), yearPx * 0.4)
   const laneY = (LANE_FRACS[node.category as Category] ?? 0.5) * CANVAS_H
   const baseY = laneY + stackOffsets[stackSlot] + stackBand * (stackSlot % 2 === 0 ? 62 : -62)
 
   // Prefer vertical offsets so papers stay near their year on the x-axis.
-  const maxDx = NODE_W * 0.7
+  const maxDx = yearPx * 1.2
   const candidates: [number, number][] = [[0, 0]]
   for (let ring = 1; ring <= 14; ring++) {
     const rY = ring * 68
     candidates.push([0, -rY], [0, rY])
     for (let step = 1; step <= Math.min(ring, 2); step++) {
-      const dx = Math.min(step * 28, maxDx)
+      const dx = Math.min(step * 10, maxDx)
       candidates.push(
         [dx, -rY], [-dx, -rY], [dx, rY], [-dx, rY],
         [dx, -rY / 2], [-dx, rY / 2],
