@@ -1,9 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { GraphNode, AppState } from '@/lib/types'
 import {
-  CANVAS_W, CANVAS_H, NODE_W, NODE_H, NODE_LABEL_FONT, NODE_LINE_HEIGHT,
-  YEAR_MIN, YEAR_MAX,
-  getCategoryStyles, LANE_FRACS, REL_LABELS, xFromYear, hashId,
+  CANVAS_W, CANVAS_H, NODE_LABEL_FONT, NODE_LINE_HEIGHT,
+  getCategoryStyles, LANE_FRACS, REL_LABELS, xFromYear, getAxisRange, hashId,
   measurePaperNode, measureConceptNode,
 } from '@/lib/data'
 
@@ -267,17 +266,20 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
     return set
   }, [hoveredPaperId, edges])
 
-  const minPaperYear = displayPapers.length ? Math.min(...displayPapers.map(n => n.year)) : YEAR_MIN
+  // The axis fits the notebook's actual year span (set by layoutPaperNodes).
+  const { lo: axisLo, hi: axisHi } = getAxisRange()
+  const spanTitle = displayPapers.length
+    ? `${Math.min(...displayPapers.map(n => n.year))} — ${Math.max(...displayPapers.map(n => n.year))}`
+    : `${axisLo} — ${axisHi}`
   // Adaptive year ruler — subdivide the more room a decade occupies on screen.
-  const unitsPerDecade = userZoom * (xFromYear(YEAR_MIN + 20) - xFromYear(YEAR_MIN + 10))
+  const unitsPerDecade = userZoom * (xFromYear(axisLo + 20) - xFromYear(axisLo + 10))
   let yearStep = 20
   if (unitsPerDecade >= 900) yearStep = 1
   else if (unitsPerDecade >= 420) yearStep = 2
   else if (unitsPerDecade >= 210) yearStep = 5
   else if (unitsPerDecade >= 95) yearStep = 10
   const axisYears: number[] = []
-  for (let y = Math.ceil(YEAR_MIN / yearStep) * yearStep; y <= YEAR_MAX; y += yearStep) axisYears.push(y)
-  if (axisYears[axisYears.length - 1] !== YEAR_MAX) axisYears.push(YEAR_MAX)
+  for (let y = Math.ceil(axisLo / yearStep) * yearStep; y <= axisHi; y += yearStep) axisYears.push(y)
   const lanes = ['vision', 'rl', 'foundations', 'architecture', 'language'] as const
 
   return (
@@ -360,7 +362,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
           const inHover = hoveredEdges?.has(i)
           const dim = related && !inSelection
           const highlight = inSelection || inHover
-          const opacity = hoveredEdge === i ? 0.55 : dim ? 0.06 : highlight ? 0.82 : 0.14
+          const opacity = hoveredEdge === i ? 0.55 : dim ? 0.06 : highlight ? 0.82 : 0.3
           const path = edgePath(a, b, aw, ah, bw, bh, bendSign)
           const midX = (a.x + b.x) / 2
           const midY = (a.y + b.y) / 2 - 6
@@ -509,7 +511,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
               <line className="axis-line" x1={xx} x2={xx} y1={40} y2={CANVAS_H - 36}
                 strokeDasharray={major ? '3 6' : '1 6'} opacity={major ? 0.7 : 0.3}
                 vectorEffect="non-scaling-stroke" />
-              <text className="tick-label" x={xx} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === YEAR_MAX ? 600 : 400}>
+              <text className="tick-label" x={xx} y={CANVAS_H - 16} textAnchor="middle" fontWeight={major || year === axisHi ? 600 : 400}>
                 {year}
               </text>
             </g>
@@ -518,7 +520,7 @@ export function Graph({ state, onSelectNode, onClearSelection, selectedId, theme
       </g>
 
       <text className="tick-label" x={CANVAS_W / 2} y={28} textAnchor="middle" style={{ fontSize: 11 }}>
-        a private chart of how machines learned to think · 1940 — 2026
+        a private chart of how machines learned to think · {spanTitle}
       </text>
     </svg>
     </div>
