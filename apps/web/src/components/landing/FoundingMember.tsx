@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
 import { useLocale } from '@/lib/i18n'
+import { ArrowIcon } from '@/components/ArrowIcon'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
 export function FoundingMember() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<Status>('idle')
-  const { t } = useLocale()
+  const { t, isRTL } = useLocale()
 
   const TIERS = [
     {
@@ -23,7 +24,7 @@ export function FoundingMember() {
     {
       name: t.tier_scholar_name,
       price: t.tier_scholar_price,
-      cadence: '/mo',
+      cadence: t.cadence_month,
       blurb: t.tier_scholar_blurb,
       points: t.tier_scholar_points,
       featured: true,
@@ -31,7 +32,7 @@ export function FoundingMember() {
     {
       name: t.tier_patron_name,
       price: t.tier_patron_price,
-      cadence: '/mo',
+      cadence: t.cadence_month,
       blurb: t.tier_patron_blurb,
       points: t.tier_patron_points,
     },
@@ -72,6 +73,7 @@ export function FoundingMember() {
       <div className="pricing-grid">
         {TIERS.map((tier) => (
           <div key={tier.name} className={`pricing-card${tier.featured ? ' pricing-card--featured' : ''}`}>
+            {tier.featured && <span className="pricing-recommended">{t.tier_recommended}</span>}
             <div className="pricing-name">{tier.name}</div>
             <div className="pricing-price">
               {tier.price}
@@ -80,7 +82,10 @@ export function FoundingMember() {
             <div className="pricing-blurb">{tier.blurb}</div>
             <ul className="pricing-points">
               {(tier.points as readonly string[]).map((p) => (
-                <li key={p}>{p}</li>
+                <li key={p}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6.2 4.8 9 10 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {p}
+                </li>
               ))}
             </ul>
           </div>
@@ -101,8 +106,13 @@ export function FoundingMember() {
               aria-label="Email address"
               required
             />
-            <button type="submit" className="btn-primary" disabled={status === 'loading'}>
-              {status === 'loading' ? t.reserving : t.reserve_btn}
+            <button type="submit" className="btn-primary arrow-link" disabled={status === 'loading'}>
+              {status === 'loading' ? t.reserving : (
+                <>
+                  {t.reserve_btn}
+                  <ArrowIcon direction={isRTL ? 'left' : 'right'} />
+                </>
+              )}
             </button>
           </>
         )}

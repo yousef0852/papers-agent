@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import type { ChatMessage } from '@/lib/types'
 import { useSuggestions } from '@/lib/suggestions'
 import { useLocale } from '@/lib/i18n'
@@ -11,15 +12,19 @@ interface ChatPanelProps {
   fullscreen: boolean
   onClose: () => void
   onToggleFullscreen: () => void
+  guestTurnsUsed?: number
+  guestTurnsLeft?: number
+  guestLimitReached?: boolean
 }
 
-export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, onClose, onToggleFullscreen }: ChatPanelProps) {
+export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, onClose, onToggleFullscreen, guestTurnsUsed = 0, guestTurnsLeft, guestLimitReached }: ChatPanelProps) {
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const { locale, t } = useLocale()
   const { suggestion } = useSuggestions(locale)
 
   const isEmpty = messages.length === 0 && !pending
+  const blocked = pending || !!guestLimitReached
 
   useEffect(() => {
     const el = scrollRef.current
@@ -28,7 +33,7 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
 
   function submit() {
     const text = draft.trim()
-    if (!text || pending) return
+    if (!text || blocked) return
     setDraft('')
     onSendMessage(text)
   }
@@ -41,6 +46,7 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
   }
 
   function firePrompt(text: string) {
+    if (blocked) return
     setDraft('')
     onSendMessage(text)
   }
@@ -55,6 +61,9 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
           <div>
             <div className="chat-title">{t.chat_title}</div>
             <div className="chat-sub">{t.chat_sub}</div>
+            {guestTurnsUsed > 0 && typeof guestTurnsLeft === 'number' && !guestLimitReached && (
+              <div className="chat-status">{t.guest_turns_left(guestTurnsLeft)}</div>
+            )}
           </div>
           <div className="chat-head-actions">
             <button
@@ -85,7 +94,7 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
                     <p className="hero-sub">{suggestion.sub}</p>
                     <div className="hero-prompts">
                       {suggestion.prompts.map((p) => (
-                        <button key={p} className="prompt-chip" onClick={() => firePrompt(p)} disabled={pending}>
+                        <button key={p} className="prompt-chip" onClick={() => firePrompt(p)} disabled={blocked}>
                           {p}
                         </button>
                       ))}
@@ -99,19 +108,28 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={onKey}
-                  placeholder={t.placeholder_hero}
-                  disabled={pending}
+                  placeholder={guestLimitReached ? t.guest_gate_placeholder : t.placeholder_hero}
+                  disabled={blocked}
                   rows={3}
                   autoFocus={open}
                   dir="auto"
                 />
                 <div className="composer-row">
                   <span className="composer-hint">{t.enter_hint}</span>
-                  <button className="send-btn" onClick={submit} disabled={pending || !draft.trim()}>
+                  <button className="send-btn" onClick={submit} disabled={blocked || !draft.trim()}>
                     {t.send}
                   </button>
                 </div>
               </div>
+              {guestLimitReached && (
+                <div className="chat-gate">
+                  <p className="chat-gate-body">{t.guest_gate_body}</p>
+                  <div className="chat-gate-actions">
+                    <Link href="/register" className="chat-gate-btn chat-gate-btn--primary">{t.auth_signup_submit}</Link>
+                    <Link href="/login" className="chat-gate-btn">{t.auth_sign_in}</Link>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -150,18 +168,27 @@ export function ChatPanel({ messages, pending, onSendMessage, open, fullscreen, 
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={onKey}
-                  placeholder={t.placeholder_chat}
-                  disabled={pending}
+                  placeholder={guestLimitReached ? t.guest_gate_placeholder : t.placeholder_chat}
+                  disabled={blocked}
                   rows={3}
                   dir="auto"
                 />
                 <div className="composer-row">
                   <span className="composer-hint">{t.enter_hint}</span>
-                  <button className="send-btn" onClick={submit} disabled={pending || !draft.trim()}>
+                  <button className="send-btn" onClick={submit} disabled={blocked || !draft.trim()}>
                     {t.send}
                   </button>
                 </div>
               </div>
+              {guestLimitReached && (
+                <div className="chat-gate">
+                  <p className="chat-gate-body">{t.guest_gate_body}</p>
+                  <div className="chat-gate-actions">
+                    <Link href="/register" className="chat-gate-btn chat-gate-btn--primary">{t.auth_signup_submit}</Link>
+                    <Link href="/login" className="chat-gate-btn">{t.auth_sign_in}</Link>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

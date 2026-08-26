@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { Graph, Inspector } from '@/components/Graph'
 import { ChatPanel } from '@/components/ChatPanel'
 import { LangToggle } from '@/components/LangToggle'
-import { loadState, saveState, createInitialState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage } from '@/lib/store'
+import { loadState, saveState, createInitialState, cancelPendingNotebookSync, resetNotebookOnApi, setFocus, sendUserMessage, exportNotebookAsJson } from '@/lib/store'
 import { getCategoryStyles, REL_LABELS, STORAGE_KEY, layoutPaperNodes, CANVAS_W, enrichNodesWithKeyPoints } from '@/lib/data'
 import { API_BASE_URL } from '@/lib/config'
 import { capture } from '@/lib/analytics'
+import { getGuestTurns, incrementGuestTurns, guestTurnsRemaining, isGuestLimitReached } from '@/lib/guest'
 import { BrandLogo } from '@/components/BrandLogo'
 import { useLocale } from '@/lib/i18n'
 import type { AppState } from '@/lib/types'
@@ -55,9 +57,11 @@ export default function Home() {
   const [resetNotice, setResetNotice] = useState<string | null>(null)
   const [notebookKey, setNotebookKey] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [guestTurns, setGuestTurns] = useState(0)
 
   useEffect(() => {
     capture('notebook_opened')
+    setGuestTurns(getGuestTurns())
   }, [])
 
   useEffect(() => {
@@ -198,26 +202,13 @@ export default function Home() {
   }
 
   function handleExport() {
-    const s = loadState()
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      nodes: s.nodes,
-      edges: s.edges,
-      messages: s.messages,
-    }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `ai-mind-notebook-${new Date().toISOString().slice(0, 10)}.json`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
+    const s = exportNotebookAsJson()
     capture('graph_exported', { nodes: s.nodes.length, edges: s.edges.length })
   }
 
   async function handleSendMessage(text: string) {
+    if (isGuestLimitReached(guestTurns)) return
+
     const optimistic = loadState()
     optimistic.messages.push({ role: 'user', content: text })
     optimistic.pending = true
@@ -225,6 +216,7 @@ export default function Home() {
     setState(optimistic)
     const turnCount = optimistic.messages.filter((m) => m.role === 'user').length
     capture('tutor_message_sent', { turn: turnCount, length: text.length })
+    setGuestTurns(incrementGuestTurns())
 
     const next = await sendUserMessage(text)
     setState(next)
@@ -257,6 +249,12 @@ export default function Home() {
           <button className="header-btn ghost header-btn--theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
             {theme === 'dark' ? t.theme_dark : t.theme_light}
           </button>
+          <Link href="/settings" className="header-btn ghost header-btn--settings" title={t.settings_title} aria-label={t.settings_title}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3"/>
+              <path d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1M12.7 12.7l-1.1-1.1M4.4 4.4 3.3 3.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+          </Link>
           <button className="header-btn ghost header-btn--export" onClick={handleExport} title={t.export_btn}>{t.export_btn}</button>
           <button
             className="header-btn ghost header-btn--reset"
@@ -336,6 +334,9 @@ export default function Home() {
         fullscreen={chatFullscreen}
         onClose={() => { setChatOpen(false); setChatFullscreen(false) }}
         onToggleFullscreen={() => { setChatFullscreen(f => !f); if (!chatOpen) setChatOpen(true) }}
+        guestTurnsUsed={guestTurns}
+        guestTurnsLeft={guestTurnsRemaining(guestTurns)}
+        guestLimitReached={isGuestLimitReached(guestTurns)}
       />
 
       {resetNotice && (
@@ -356,6 +357,18 @@ export default function Home() {
           />
           <div className="mobile-menu-sheet" role="menu">
             <div className="mobile-menu-handle" aria-hidden="true" />
+            <Link
+              href="/settings"
+              className="mobile-menu-item"
+              role="menuitem"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1M12.7 12.7l-1.1-1.1M4.4 4.4 3.3 3.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              {t.settings_title}
+            </Link>
             <button
               className="mobile-menu-item"
               role="menuitem"

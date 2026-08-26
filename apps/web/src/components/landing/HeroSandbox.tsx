@@ -6,6 +6,7 @@ import { SANDBOX_CATEGORY_STYLES, SEED_NODES, INJECT_BEAT2, INJECT_BEAT4,
   SB_W, SB_H, SB_NODE_W, SB_NODE_H, SB_TICKS, sbViewBox, type SNode,
 } from '@/lib/sandbox-data'
 import { useLocale } from '@/lib/i18n'
+import { ArrowIcon } from '@/components/ArrowIcon'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface SEdge { id: string; from: string; to: string; visible: boolean }
@@ -77,7 +78,8 @@ function TypingDots() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HeroSandbox() {
-  const { t } = useLocale()
+  const { t, isRTL } = useLocale()
+  const fwd = isRTL ? 'left' : 'right'
 
   const [nodes, setNodes]         = useState<SNode[]>(() =>
     SEED_NODES.map(n => ({ ...n, visible: false, isNew: false }))
@@ -236,13 +238,19 @@ export default function HeroSandbox() {
         </div>
 
         <div className="sb-chat-foot">
-          <Link href="/app" className="sb-cta">{t.sandbox_cta}</Link>
+          <Link href="/app" className="sb-cta arrow-link">
+            {t.sandbox_cta}
+            <ArrowIcon direction={fwd} />
+          </Link>
         </div>
       </div>
 
       {/* ── CTA nudge ── */}
       <div className={`sb-nudge${nudgeVisible ? ' sb-nudge--visible' : ''}`}>
-        <Link href="/app">{t.sandbox_nudge}</Link>
+        <Link href="/app" className="arrow-link">
+          {t.sandbox_nudge}
+          <ArrowIcon direction={fwd} />
+        </Link>
       </div>
     </div>
   )

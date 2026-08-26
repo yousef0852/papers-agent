@@ -1,0 +1,554 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   Settings page (/settings) — imported only by that route.
+   Structure borrows from the "Steep" design system (styles.refero.design):
+   a centered dialog over a dimmed backdrop (Manus / LibreChat pattern),
+   an account summary atop a compact nav, one section shown at a time.
+   Palette does NOT borrow from Steep — it's AI Mind's own warm-manuscript
+   tokens (cream paper, Fraunces, warm brown), matching auth.css and the
+   rest of the product. The "peach" accent card reuses the same tan
+   already seen on the canvas (the "foundations" category swatch).
+   Self-contained: does not depend on landing.css.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.settings-page {
+  --ink: #1A2332;
+  --paper: #FDFBF7;
+  --mist: #F0EDE5;
+  --fog: #F5F1E8;
+  --slate: #8B8680;
+  --ash: #A8A39D;
+  --smoke: #A8A39D;
+  --peach: #EDE5D0;
+  --sienna: #A67C52;
+  --line: #D4C4B8;
+  --danger: #8b3a2f;
+  --shadow-artifact: 0 4px 14px rgba(26, 35, 50, 0.12);
+  --shadow-dialog: 0 24px 64px rgba(26, 35, 50, 0.16), 0 2px 8px rgba(26, 35, 50, 0.08);
+
+  min-height: 100vh;
+  background: var(--fog);
+}
+
+html.dark .settings-page {
+  --ink: #E8E6E1;
+  --paper: #1A2332;
+  --mist: #1F2B3A;
+  --fog: #0F1419;
+  --slate: #9A938A;
+  --ash: #6F6862;
+  --smoke: #6F6862;
+  --peach: #2A2418;
+  --sienna: #D4956B;
+  --line: #2A3542;
+  --danger: #c85a44;
+  --shadow-artifact: 0 4px 18px rgba(0, 0, 0, 0.55);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Top bar (page chrome, sits behind/above the dimmed backdrop, always
+   fully visible — matches the reference apps' own undimmed nav bar) ────── */
+.settings-topbar {
+  height: 60px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.settings-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--slate);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.settings-icon-btn:hover {
+  color: var(--ink);
+  border-color: var(--ash);
+}
+
+/* ── Backdrop + dialog ───────────────────────────────────────────────────── */
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  top: 60px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 10, 12, 0.4);
+}
+html.dark .settings-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.settings-dialog {
+  width: 100%;
+  max-width: 900px;
+  height: min(680px, 100%);
+  background: var(--paper);
+  border-radius: 20px;
+  box-shadow: var(--shadow-dialog);
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Nav column ──────────────────────────────────────────────────────────── */
+.settings-dialog-nav {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--mist);
+  border-inline-end: 1px solid var(--line);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+}
+
+.settings-account-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 10px 14px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.settings-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.settings-account-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.settings-account-plan {
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  color: var(--slate);
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--slate);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 130ms ease, color 130ms ease;
+}
+[dir="rtl"] .settings-nav-item {
+  text-align: right;
+}
+.settings-nav-item svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.settings-nav-item:hover {
+  color: var(--ink);
+}
+.settings-nav-item.active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-artifact);
+}
+
+/* ── Content column ──────────────────────────────────────────────────────── */
+.settings-dialog-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.settings-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 19px;
+  font-weight: 400;
+  color: var(--ink);
+}
+.settings-dialog-title svg {
+  color: var(--ash);
+}
+.settings-dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: none;
+  border: none;
+  color: var(--slate);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 130ms ease, color 130ms ease;
+}
+.settings-dialog-close:hover {
+  color: var(--ink);
+  background: var(--mist);
+}
+
+.settings-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px 26px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Rows ────────────────────────────────────────────────────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--line);
+}
+.settings-row-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--ink);
+}
+.settings-row-value {
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  color: var(--slate);
+  text-align: right;
+}
+[dir="rtl"] .settings-row-value {
+  text-align: left;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.settings-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 9999px;
+  padding: 7px 15px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+.settings-btn:hover {
+  border-color: var(--ash);
+}
+.settings-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.settings-btn--filled {
+  background: var(--sienna);
+  color: var(--paper);
+  border-color: var(--sienna);
+}
+.settings-btn--filled:hover {
+  opacity: 0.86;
+}
+.settings-btn--danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+.settings-btn--danger:hover {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* ── Guest notice (the page's one peach accent) ─────────────────────────── */
+.settings-guest-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 15px;
+  margin-bottom: 4px;
+  background: var(--peach);
+  border-radius: 14px;
+}
+.settings-guest-notice p {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--sienna);
+  margin: 0;
+}
+.settings-guest-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.settings-guest-btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 9999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+.settings-guest-btn--filled {
+  background: var(--sienna);
+  color: var(--peach);
+}
+.settings-guest-btn--filled:hover {
+  opacity: 0.86;
+}
+.settings-guest-btn--ghost {
+  background: transparent;
+  color: var(--sienna);
+  border: 1px solid var(--sienna);
+}
+.settings-guest-btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ── Usage ───────────────────────────────────────────────────────────────── */
+.settings-usage-value {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--ink);
+  margin: 4px 0 2px;
+}
+.settings-usage-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
+html.dark .settings-usage-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+.settings-usage-fill {
+  height: 100%;
+  background: var(--sienna);
+  border-radius: 4px;
+  transition: width 220ms ease;
+}
+.settings-usage-note {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  color: var(--slate);
+  margin: 0;
+}
+
+/* ── Plan cards ──────────────────────────────────────────────────────────── */
+.settings-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .settings-plan-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.settings-plan-card {
+  position: relative;
+  background: var(--mist);
+  border-radius: 14px;
+  padding: 15px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-plan-recommended {
+  position: absolute;
+  top: -9px;
+  inset-inline-start: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--sienna);
+  border-radius: 9999px;
+  padding: 2px 8px;
+}
+.settings-plan-card--featured {
+  background: var(--paper);
+  box-shadow: var(--shadow-artifact);
+}
+.settings-plan-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.settings-plan-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+.settings-plan-current {
+  font-family: 'Inter', sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  padding: 2px 8px;
+}
+.settings-plan-price {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1;
+  /* Same bidi fix as landing.css .pricing-price — keep "$12/mo" as one
+     fixed LTR unit instead of the bidi algorithm reordering it to "mo/$12". */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.settings-plan-cadence {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--slate);
+  margin-left: 3px;
+}
+.settings-plan-blurb {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  color: var(--slate);
+}
+.settings-plan-points {
+  list-style: none;
+  margin: 3px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-plan-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.settings-plan-points li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--sienna);
+}
+
+/* ── Preview notice ──────────────────────────────────────────────────────── */
+.settings-preview-notice {
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--slate);
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+/* Danger zone stays achromatic; the warning lives in label/button color only */
+.settings-danger-title {
+  color: var(--danger);
+}
+
+@media (max-width: 680px) {
+  .settings-backdrop {
+    padding: 0;
+    top: 52px;
+  }
+  .settings-dialog {
+    max-width: 100%;
+    height: 100%;
+    border-radius: 0;
+    flex-direction: column;
+  }
+  .settings-dialog-nav {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border-inline-end: none;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  .settings-account-summary {
+    display: none;
+  }
+  .settings-nav-item {
+    width: auto;
+    white-space: nowrap;
+  }
+}
