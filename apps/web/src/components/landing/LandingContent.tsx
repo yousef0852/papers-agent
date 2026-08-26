@@ -6,12 +6,14 @@ import { HeroSandboxLoader } from './HeroSandboxLoader'
 import { FoundingMember } from './FoundingMember'
 import { BrandLogo } from '@/components/BrandLogo'
 import { LangToggle } from '@/components/LangToggle'
+import { ArrowIcon } from '@/components/ArrowIcon'
 import { useLocale } from '@/lib/i18n'
 
 const THEME_KEY = 'ai-mind-theme'
 
 export function LandingContent() {
-  const { t } = useLocale()
+  const { t, isRTL } = useLocale()
+  const fwd = isRTL ? 'left' : 'right'
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
 
   // Sync with localStorage on mount (default: dark)
@@ -49,7 +51,11 @@ export function LandingContent() {
           >
             {theme === 'dark' ? t.theme_dark : t.theme_light}
           </button>
-          <Link href="/app" className="btn-primary">{t.open_notebook}</Link>
+          <Link href="/login" className="btn-ghost">{t.auth_sign_in}</Link>
+          <Link href="/app" className="btn-primary arrow-link">
+            {t.open_notebook}
+            <ArrowIcon direction={fwd} />
+          </Link>
         </div>
       </nav>
 
@@ -63,8 +69,14 @@ export function LandingContent() {
           </h1>
           <p className="landing-body">{t.hero_body}</p>
           <div className="landing-actions">
-            <Link href="/app" className="btn-primary">{t.open_notebook_long}</Link>
-            <a href="#how-it-works" className="btn-ghost">{t.how_it_works_link}</a>
+            <Link href="/app" className="btn-primary arrow-link">
+              {t.open_notebook_long}
+              <ArrowIcon direction={fwd} />
+            </Link>
+            <a href="#how-it-works" className="btn-ghost arrow-link">
+              {t.how_it_works_link}
+              <ArrowIcon direction="down" />
+            </a>
           </div>
         </div>
 
@@ -103,7 +115,10 @@ export function LandingContent() {
       <section className="landing-footer-cta">
         <h2>{t.footer_cta_title}</h2>
         <p>{t.footer_cta_body}</p>
-        <Link href="/app" className="btn-primary">{t.open_ai_mind}</Link>
+        <Link href="/app" className="btn-primary arrow-link">
+          {t.open_ai_mind}
+          <ArrowIcon direction={fwd} />
+        </Link>
       </section>
     </div>
   )

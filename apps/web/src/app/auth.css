@@ -1,0 +1,333 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   Auth pages (/login, /register) — imported only by those routes.
+   Structure borrows from the "Steep" design system (styles.refero.design):
+   restraint, pill buttons, generous whitespace, one accent card per page.
+   Palette does NOT borrow from Steep — it's AI Mind's own warm-manuscript
+   tokens (cream paper, Fraunces, warm brown), so these pages read as part
+   of the same product as the landing page and notebook, not a bolted-on
+   SaaS dashboard. The "peach" accent card reuses the same tan already seen
+   on the canvas (the "foundations" category swatch). Self-contained: does
+   not depend on landing.css.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.auth-page {
+  --ink: #1A2332;
+  --paper: #FDFBF7;
+  --mist: #F0EDE5;
+  --fog: #F5F1E8;
+  --slate: #8B8680;
+  --ash: #A8A39D;
+  --smoke: #A8A39D;
+  --peach: #EDE5D0;
+  --sienna: #A67C52;
+  --line: #D4C4B8;
+  --ring: rgba(166, 124, 82, 0.18);
+  --shadow-artifact: 0 4px 14px rgba(26, 35, 50, 0.12);
+
+  min-height: 100vh;
+  background: var(--fog);
+}
+
+html.dark .auth-page {
+  --ink: #E8E6E1;
+  --paper: #1A2332;
+  --mist: #1F2B3A;
+  --fog: #0F1419;
+  --slate: #9A938A;
+  --ash: #6F6862;
+  --smoke: #6F6862;
+  --peach: #2A2418;
+  --sienna: #D4956B;
+  --line: #2A3542;
+  --ring: rgba(212, 149, 107, 0.22);
+  --shadow-artifact: 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+.auth-topbar {
+  height: 64px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 19px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.auth-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 13px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--slate);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.auth-icon-btn:hover {
+  color: var(--ink);
+  border-color: var(--ash);
+}
+
+/* ── Shell / card ────────────────────────────────────────────────────────── */
+.auth-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 96px 24px 60px;
+  min-height: calc(100vh - 64px);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 408px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow-artifact);
+  padding: 40px 34px 30px;
+  text-align: center;
+}
+
+.auth-ornament {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 22px;
+  color: var(--sienna);
+  opacity: 0.6;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.auth-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.auth-sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--slate);
+  margin: 0 0 28px;
+}
+
+/* ── Form ────────────────────────────────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+[dir="rtl"] .auth-form {
+  text-align: right;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--slate);
+}
+
+.auth-input {
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.auth-input::placeholder {
+  color: var(--smoke);
+}
+.auth-input:focus {
+  border-color: var(--sienna);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.auth-input-wrap .auth-input {
+  padding-inline-end: 44px;
+}
+
+.auth-eye-btn {
+  position: absolute;
+  inset-inline-end: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 9999px;
+  color: var(--ash);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+.auth-eye-btn:hover {
+  color: var(--ink);
+  background: var(--mist);
+}
+
+.auth-field-error {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #b3402f;
+  margin: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.auth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 9999px;
+  padding: 13px 22px;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+.auth-btn--filled {
+  background: var(--sienna);
+  color: var(--paper);
+}
+.auth-btn--filled:hover {
+  opacity: 0.86;
+}
+.auth-btn--filled:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.auth-btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.auth-btn--ghost:hover {
+  background: var(--mist);
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* ── Switch / preview notice ────────────────────────────────────────────── */
+.auth-switch {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--slate);
+  margin: 24px 0 0;
+}
+.auth-switch a {
+  color: var(--sienna);
+  font-weight: 600;
+  text-decoration: none;
+}
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* ── Arrow links (switch link, back link) ───────────────────────────────── */
+.auth-arrow-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.auth-arrow-link .arrow-icon {
+  flex-shrink: 0;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-arrow-link:hover .arrow-icon {
+  transform: translateX(3px);
+}
+[dir="rtl"] .auth-arrow-link:hover .arrow-icon {
+  transform: translateX(-3px);
+}
+/* The back link points the opposite way of the switch link — reverse its hover nudge. */
+.auth-arrow-link--lead:hover .arrow-icon {
+  transform: translateX(-3px);
+}
+[dir="rtl"] .auth-arrow-link--lead:hover .arrow-icon {
+  transform: translateX(3px);
+}
+
+.auth-preview-notice {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--sienna);
+  background: var(--peach);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 20px 0 0;
+}
+
+.auth-back {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--slate);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+.auth-back:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 480px) {
+  .auth-shell {
+    padding-top: 20px;
+  }
+  .auth-card {
+    padding: 32px 22px 26px;
+  }
+}

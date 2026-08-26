@@ -199,6 +199,12 @@ body:has(.app.graph-only) {
 }
 .header-btn:disabled:hover { background: transparent; color: var(--ink-muted); border-color: transparent; }
 .header-btn.active { background: var(--accent-hover); }
+.header-btn--settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+}
 
 .canvas-wrap {
   position: relative;
@@ -303,8 +309,9 @@ body:has(.app.graph-only) {
   .legend-stat  { display: none; }
 
   /* Desktop-only actions: hidden on mobile */
-  .header-btn--export { display: none; }
-  .header-btn--reset  { display: none; }
+  .header-btn--export   { display: none; }
+  .header-btn--reset    { display: none; }
+  .header-btn--settings { display: none; }
 
   /* Overflow trigger: invisible on desktop, shown on mobile */
   .header-btn--overflow {
@@ -1073,6 +1080,59 @@ body.chat-body::before {
 .send-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .send-btn:disabled { background: var(--rule); color: var(--ink-faded); cursor: not-allowed; }
 
+.chat-gate {
+  margin: 0 20px 18px;
+  padding: 16px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  text-align: center;
+}
+.composer--hero + .chat-gate {
+  margin-top: 12px;
+  margin-left: 0;
+  margin-right: 0;
+}
+.chat-gate-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin: 0 0 12px;
+}
+.chat-gate-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.chat-gate-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 7px;
+  padding: 9px 18px;
+  text-decoration: none;
+  color: var(--ink-muted);
+  border: 1px solid var(--rule);
+  background: transparent;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.chat-gate-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+.chat-gate-btn--primary {
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+}
+.chat-gate-btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
 .examples {
   display: flex; flex-direction: column; gap: 6px; margin-top: 12px;
 }
@@ -1338,7 +1398,9 @@ html[lang="ar"] body {
   font-family: var(--font-arabic) !important;
   line-height: 1.7;
 }
-html[lang="ar"] *:not(svg):not(svg *):not(canvas) {
+/* The brand mark ("AI Mind") is a wordmark, not translated body text — it
+   keeps its Fraunces treatment in every locale, same as any logo would. */
+html[lang="ar"] *:not(svg):not(svg *):not(canvas):not(.brand-mark):not(.landing-brand):not(.auth-brand):not(.settings-brand) {
   font-family: var(--font-arabic) !important;
   line-height: 1.7;
 }

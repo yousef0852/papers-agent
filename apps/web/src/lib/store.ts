@@ -326,3 +326,23 @@ export function setFocus(id: string | null) {
   s.focusId = id
   saveState(s)
 }
+
+export function exportNotebookAsJson(): AppState {
+  const s = loadState()
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    nodes: s.nodes,
+    edges: s.edges,
+    messages: s.messages,
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ai-mind-notebook-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+  return s
+}
