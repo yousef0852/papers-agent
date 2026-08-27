@@ -199,12 +199,6 @@ body:has(.app.graph-only) {
 }
 .header-btn:disabled:hover { background: transparent; color: var(--ink-muted); border-color: transparent; }
 .header-btn.active { background: var(--accent-hover); }
-.header-btn--settings {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 10px;
-}
 
 .canvas-wrap {
   position: relative;

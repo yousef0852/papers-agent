@@ -249,11 +249,8 @@ export default function Home() {
           <button className="header-btn ghost header-btn--theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
             {theme === 'dark' ? t.theme_dark : t.theme_light}
           </button>
-          <Link href="/settings" className="header-btn ghost header-btn--settings" title={t.settings_title} aria-label={t.settings_title}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3"/>
-              <path d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1M12.7 12.7l-1.1-1.1M4.4 4.4 3.3 3.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            </svg>
+          <Link href="/settings" className="header-btn ghost header-btn--settings" title={t.settings_title}>
+            {t.settings_title}
           </Link>
           <button className="header-btn ghost header-btn--export" onClick={handleExport} title={t.export_btn}>{t.export_btn}</button>
           <button
